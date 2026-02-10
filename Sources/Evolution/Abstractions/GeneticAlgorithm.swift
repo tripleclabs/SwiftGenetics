@@ -30,7 +30,7 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
         if !population.organisms.isEmpty {
             let needsEval = population.organisms.contains { $0.fitness == nil && $0.objectives == nil }
             if needsEval {
-                await evaluatePopulation(&population)
+                await evaluatePopulation(&population, threads: configuration.parallelEvaluationThreads)
             }
         }
         
@@ -44,7 +44,7 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
             try population.epoch()
             
             // Re-evaluate the new population (or the expanded population for NSGA-II).
-            await evaluatePopulation(&population)
+            await evaluatePopulation(&population, threads: configuration.parallelEvaluationThreads)
             
             // If NSGA-II, perform survival selection (truncation back to N) after evaluation.
             if population.evolutionType == .nsga2 {
@@ -63,7 +63,7 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
     }
     
     /// Concurrently evaluates the fitness or objectives of the population using task chunking.
-    private func evaluatePopulation(_ population: inout Population<Eval.G>) async {
+    private func evaluatePopulation(_ population: inout Population<Eval.G>, threads: Int?) async {
         let organisms = population.organisms
         let evolutionType = population.evolutionType
         let evaluator = self.fitnessEvaluator
@@ -72,7 +72,7 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
         // Instead of one task per organism, we split the work across the number of active processors.
         // This reduces task scheduling overhead for large populations.
         let totalCount = organisms.count
-        let processorCount = ProcessInfo.processInfo.activeProcessorCount
+        let processorCount = threads ?? ProcessInfo.processInfo.activeProcessorCount
         let chunkSize = max(1, Int(ceil(Double(totalCount) / Double(processorCount))))
         
         await withTaskGroup(of: [(Int, Double?, [Double]?)].self) { group in

@@ -14,11 +14,15 @@ import Foundation
 public struct EvolutionAlgorithmConfiguration {
 	public let maxEpochs: Int
 	public let algorithmType: EvolutionAlgorithmType
+    /// The number of parallel threads to use for fitness evaluation.
+    /// If `nil`, the system will use all available cores.
+    public let parallelEvaluationThreads: Int?
 	
-	/// Creates a new EA configruation.
-	public init(maxEpochs: Int, algorithmType: EvolutionAlgorithmType) {
+	/// Creates a new EA configuration.
+	public init(maxEpochs: Int, algorithmType: EvolutionAlgorithmType, parallelEvaluationThreads: Int? = nil) {
 		self.maxEpochs = maxEpochs
 		self.algorithmType = algorithmType
+        self.parallelEvaluationThreads = parallelEvaluationThreads
 	}
 }
 
