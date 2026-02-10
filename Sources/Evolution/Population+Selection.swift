@@ -15,7 +15,7 @@ extension Population {
 	/// are sorted in ascending order.
 	internal func elitesFromPopulation() -> [Organism<G>] {
 		guard environment.numberOfEliteCopies * environment.numberOfElites % 2 == 0 else {
-			fatalError("Must be an even number for roulette sampling to work.")
+			fatalError("Must be an even number for mating to work correctly.")
 		}
 		var elites = [Organism<G>]()
 		for _ in 0..<environment.numberOfEliteCopies {

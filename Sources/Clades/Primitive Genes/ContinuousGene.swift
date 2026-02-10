@@ -42,11 +42,12 @@ public struct ContinuousGene<R: FloatingPoint & Hashable & Sendable, E: GeneticE
 		guard Double.random(in: 0..<1) < rate else { return }
 		
 		// Get environmental mutation parameters.
-		guard let mutationSize = environment.parameters[Param.mutationSize.rawValue]!.value as? Double else {
-			fatalError("Expected \(Param.mutationSize.rawValue): Double in environment parameters!")
-		}
-		guard let rawMutationType = environment.parameters[Param.mutationType.rawValue]!.value as? String, let mutationType = ContinuousMutationType(rawValue: rawMutationType) else {
-			fatalError("Expected \(Param.mutationType.rawValue): MutationType in environment parameters!")
+		let mutationSize = (environment.parameters[Param.mutationSize.rawValue]?.value as? Double) ?? 0.1
+		let mutationType: ContinuousMutationType
+		if let rawMutationType = environment.parameters[Param.mutationType.rawValue]?.value as? String, let type = ContinuousMutationType(rawValue: rawMutationType) {
+			mutationType = type
+		} else {
+			mutationType = .uniform
 		}
 		
 		// Perform the appropriate mutation.

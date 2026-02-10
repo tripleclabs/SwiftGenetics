@@ -78,11 +78,11 @@ final public class LivingTreeGene<GeneType: TreeGeneType>: Gene {
 		// structural mutation has not already been made.
 		if !madeStructuralMutation {
 			if geneType.isBinaryType {
-				geneType = template.binaryTypes.filter { $0 != geneType }.randomElement()!
+				geneType = template.binaryTypes.filter { $0 != geneType }.randomElement() ?? geneType
 			} else if geneType.isUnaryType {
-				geneType = template.unaryTypes.filter { $0 != geneType }.randomElement() ?? template.unaryTypes.first!
+				geneType = template.unaryTypes.filter { $0 != geneType }.randomElement() ?? geneType
 			} else if geneType.isLeafType {
-				geneType = template.leafTypes.filter { $0 != geneType }.randomElement()!
+				geneType = template.leafTypes.filter { $0 != geneType }.randomElement() ?? geneType
 			} else {
 				fatalError()
 			}
