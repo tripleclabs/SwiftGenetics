@@ -12,6 +12,7 @@ final class MultiObjectiveTests: XCTestCase {
         var numberOfElites: Int = 0
         var numberOfEliteCopies: Int = 0
         var parameters: [String : AnyCodable] = [:]
+        var randomSource: RandomSource = RandomSource(seed: 42)
     }
     
     struct ContGenome: Genome {

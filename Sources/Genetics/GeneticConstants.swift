@@ -31,4 +31,7 @@ public protocol GeneticConstants: Sendable {
 	/// A dictionary of additional parameters. The requirement for primitive values to be wrapped in
 	/// an `AnyCodable` object is clunky, but necessary for serialization.
 	var parameters: [String: AnyCodable] { get }
+    
+    /// The source of randomness for genetic operations.
+    var randomSource: RandomSource { get set }
 }

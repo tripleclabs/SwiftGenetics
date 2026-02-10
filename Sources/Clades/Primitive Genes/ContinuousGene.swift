@@ -39,7 +39,7 @@ public struct ContinuousGene<R: FloatingPoint & Hashable & Sendable, E: GeneticE
 	}
 	
 	mutating public func mutate(rate: Double, environment: ContinuousGene<R, E>.Environment) throws {
-		guard Double.random(in: 0..<1) < rate else { return }
+		guard environment.randomSource.randomDouble() < rate else { return }
 		
 		// Get environmental mutation parameters.
 		let mutationSize = (environment.parameters[Param.mutationSize.rawValue]?.value as? Double) ?? 0.1
@@ -53,9 +53,9 @@ public struct ContinuousGene<R: FloatingPoint & Hashable & Sendable, E: GeneticE
 		// Perform the appropriate mutation.
 		switch mutationType {
 		case .uniform:
-			value += try ContinuousGene.genericize(Double.random(in: (-mutationSize)...mutationSize))
+			value += try ContinuousGene.genericize(environment.randomSource.randomDouble(in: (-mutationSize)...mutationSize))
 		case .gaussian:
-			value += try ContinuousGene.genericize(Double.randomGaussian(mu: 0.0, sigma: mutationSize))
+			value += try ContinuousGene.genericize(environment.randomSource.randomGaussian(mu: 0.0, sigma: mutationSize))
 		}
 	}
 	

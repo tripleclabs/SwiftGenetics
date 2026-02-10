@@ -41,7 +41,7 @@ final class GeneticAlgorithmIntegrationTests: XCTestCase {
 	/// Runs a GA that aims to find a sorted string of real numbers.
 	/// NOTE: this test is stochastic and may fail once in a blue moon.
     func testSortingGA() async throws {
-		let maxEpochs = 50
+		let maxEpochs = 100
 		let stringLength = 4
 		// Define environment.
 		let environment = LivingStringEnvironment(

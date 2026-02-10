@@ -30,9 +30,9 @@ extension Population {
 			throw GeneticError.evolutionFailed("Cannot sample from an empty population.")
 		}
 		guard totalFitness != 0 else {
-			return organisms.randomElement()!
+			return environment.randomSource.randomElement(from: organisms)!
 		}
-		let slice = totalFitness > 0 ? Double.random(in: 0..<1) * totalFitness : 0.0
+		let slice = totalFitness > 0 ? environment.randomSource.randomDouble() * totalFitness : 0.0
 		var cumulativeFitness = 0.0
 		for organism in organisms {
 			cumulativeFitness += organism.fitness ?? 0.0
@@ -52,7 +52,7 @@ extension Population {
 		guard selectableCount > 0 else {
 			throw GeneticError.configurationError("Selectable proportion resulted in 0 selectable organisms.")
 		}
-		let playerIndices = (0..<size).map { _ in Int.random(in: (organisms.count - selectableCount)..<organisms.count) }
+		let playerIndices = (0..<size).map { _ in environment.randomSource.randomInt(in: (organisms.count - selectableCount)..<organisms.count) }
 		return organisms[playerIndices.max()!]
 	}
     
@@ -62,8 +62,8 @@ extension Population {
             throw GeneticError.evolutionFailed("Cannot sample from an empty population.")
         }
         
-        let i = Int.random(in: 0..<organisms.count)
-        let j = Int.random(in: 0..<organisms.count)
+        let i = environment.randomSource.randomInt(in: 0..<organisms.count)
+        let j = environment.randomSource.randomInt(in: 0..<organisms.count)
         let p = organisms[i]
         let q = organisms[j]
         

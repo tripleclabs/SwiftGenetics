@@ -30,10 +30,10 @@ public struct LivingStringGenome<GeneType: Gene>: Genome where GeneType.Environm
 	}
 	
 	public func crossover(with partner: LivingStringGenome, rate: Double, environment: Environment) throws -> (LivingStringGenome, LivingStringGenome) {
-		guard Double.random(in: 0..<1) < rate else { return (self, partner) }
+		guard environment.randomSource.randomDouble() < rate else { return (self, partner) }
 		guard partner.genes.count > 1 && self.genes.count > 1 else { return (self, partner) }
 		
-		let percentPoint = Double.random(in: 0..<1)
+		let percentPoint = environment.randomSource.randomDouble()
 		let crossoverPointA = Int(Double(self.genes.count) * percentPoint)
 		let crossoverPointB = Int(Double(partner.genes.count) * percentPoint)
 		

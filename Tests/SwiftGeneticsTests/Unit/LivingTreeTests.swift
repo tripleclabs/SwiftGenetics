@@ -12,6 +12,10 @@ final class LivingTreeTests: XCTestCase {
         var numberOfElites: Int = 0
         var numberOfEliteCopies: Int = 0
         var parameters: [String : AnyCodable] = [:]
+        var randomSource: RandomSource = RandomSource(seed: 42)
+        var scalarMutationMagnitude: Int = 1
+        var structuralMutationDeletionRate: Double = 0.1
+        var structuralMutationAdditionRate: Double = 0.1
     }
     
     enum MockGeneType: Int, TreeGeneType {
@@ -28,17 +32,17 @@ final class LivingTreeTests: XCTestCase {
         static var leafTypes: [MockGeneType] { [.terminal] }
     }
     
-    func testLivingTreeGeneInitialization() {
+    func testLivingTreeGenomeInitialization() {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
-        let gene = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
+        let genome = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
         
-        XCTAssertEqual(gene.geneType, .terminal)
-        XCTAssertTrue(gene.children.isEmpty)
+        XCTAssertEqual(genome.nodes.count, 1)
+        XCTAssertEqual(genome.nodes[0].geneType, .terminal)
     }
     
-    func testLivingTreeGeneMutation() throws {
+    func testLivingTreeMutation() throws {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
-        let gene = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
+        var genome = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
         let env = LivingTreeEnvironment(
             populationSize: 10,
             selectionMethod: .roulette,
@@ -54,15 +58,28 @@ final class LivingTreeTests: XCTestCase {
         )
         
         // Mutate terminal
-        try gene.mutate(rate: 1.0, environment: env)
-        XCTAssertNotNil(gene.geneType)
+        try genome.mutate(rate: 1.0, environment: env)
+        XCTAssertFalse(genome.nodes.isEmpty)
     }
     
     func testLivingTreeGenomeOperations() throws {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
-        let root = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
-        let genome1 = LivingTreeGenome(rootGene: root)
-        let genome2 = LivingTreeGenome(rootGene: root.copy())
+        let mockEnv = LivingTreeEnvironment(
+            populationSize: 10,
+            selectionMethod: .roulette,
+            selectableProportion: 1.0,
+            mutationRate: 1.0,
+            crossoverRate: 1.0,
+            numberOfElites: 0,
+            numberOfEliteCopies: 0,
+            parameters: [:],
+            scalarMutationMagnitude: 1,
+            structuralMutationDeletionRate: 0.1,
+            structuralMutationAdditionRate: 0.1,
+            randomSource: RandomSource(seed: 42)
+        )
+        let genome1 = try LivingTreeGenome(depth: 1, template: template, environment: mockEnv)
+        let genome2 = try LivingTreeGenome(depth: 1, template: template, environment: mockEnv)
         
         let env = LivingTreeEnvironment(
             populationSize: 10,
@@ -84,74 +101,88 @@ final class LivingTreeTests: XCTestCase {
         
         // Crossover
         let (child1, child2) = try genome1.crossover(with: genome2, rate: 1.0, environment: env)
-        XCTAssertNotNil(child1.rootGene)
-        XCTAssertNotNil(child2.rootGene)
+        XCTAssertFalse(child1.nodes.isEmpty)
+        XCTAssertFalse(child2.nodes.isEmpty)
     }
     
-    func testTreeGeneCopy() {
+    func testTreeGenomeCopy() throws {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
-        let parent = LivingTreeGene<MockGeneType>(template, geneType: .binary, parent: nil, children: [])
-        parent.children.append(LivingTreeGene(template, geneType: .terminal, parent: parent, children: []))
+        let env = LivingTreeEnvironment(
+            populationSize: 10,
+            selectionMethod: .roulette,
+            selectableProportion: 1.0,
+            mutationRate: 1.0,
+            crossoverRate: 1.0,
+            numberOfElites: 0,
+            numberOfEliteCopies: 0,
+            parameters: [:],
+            scalarMutationMagnitude: 1,
+            structuralMutationDeletionRate: 0.1,
+            structuralMutationAdditionRate: 0.1,
+            randomSource: RandomSource(seed: 42)
+        )
+        let genome = try LivingTreeGenome(depth: 2, template: template, environment: env)
         
-        let copy = parent.copy()
-        XCTAssertEqual(copy.geneType, .binary)
-        XCTAssertEqual(copy.children.count, 1)
-        XCTAssertEqual(copy.children[0].geneType, .terminal)
-        
-        // Ensure it's a deep copy
-        parent.children[0].geneType = .terminal
-        // (Just verification that it works)
+        let copy = genome.copy()
+        XCTAssertEqual(copy.nodes.count, genome.nodes.count)
+        XCTAssertEqual(copy.nodes[0].geneType, genome.nodes[0].geneType)
     }
     
-    func testTreeGeneEquality() {
+    func testTreeGenomeEquality() throws {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
-        let gene1 = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
-        let gene2 = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
-        let gene3 = LivingTreeGene<MockGeneType>(template, geneType: .binary, parent: nil, children: [])
+        let genome1 = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
+        let genome2 = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
+        let genome3 = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .binary, subtreeSize: 3), FlatTreeNode(geneType: .terminal), FlatTreeNode(geneType: .terminal)], template: template)
         
-        XCTAssertEqual(gene1, gene2)
-        XCTAssertNotEqual(gene1, gene3)
-        
-        gene1.children.append(LivingTreeGene(template, geneType: .terminal, parent: gene1, children: []))
-        XCTAssertNotEqual(gene1, gene2)
-        
-        gene2.children.append(LivingTreeGene(template, geneType: .terminal, parent: gene2, children: []))
-        XCTAssertEqual(gene1, gene2)
+        XCTAssertEqual(genome1, genome2)
+        XCTAssertNotEqual(genome1, genome3)
     }
     
-    func testTreeGeneHashing() {
+    func testTreeGenomeHashing() {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
-        let gene1 = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
-        let gene2 = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
+        let genome1 = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
+        let genome2 = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
         
-        XCTAssertEqual(gene1.hashValue, gene2.hashValue)
+        XCTAssertEqual(genome1.hashValue, genome2.hashValue)
     }
 
     static let allTests = [
-        ("testLivingTreeGeneInitialization", testLivingTreeGeneInitialization),
-        ("testLivingTreeGeneMutation", testLivingTreeGeneMutation),
+        ("testLivingTreeGenomeInitialization", testLivingTreeGenomeInitialization),
+        ("testLivingTreeMutation", testLivingTreeMutation),
         ("testLivingTreeGenomeOperations", testLivingTreeGenomeOperations),
-        ("testTreeGeneCopy", testTreeGeneCopy),
-        ("testTreeGeneEquality", testTreeGeneEquality),
-        ("testTreeGeneHashing", testTreeGeneHashing),
+        ("testTreeGenomeCopy", testTreeGenomeCopy),
+        ("testTreeGenomeEquality", testTreeGenomeEquality),
+        ("testTreeGenomeHashing", testTreeGenomeHashing),
         ("testRandomTreeGenesis", testRandomTreeGenesis),
         ("testStructuralAdditionMutation", testStructuralAdditionMutation),
         ("testStructuralDeletionMutation", testStructuralDeletionMutation),
-        ("testTreeEnumeration", testTreeEnumeration),
     ]
 }
 
 extension LivingTreeTests {
     func testRandomTreeGenesis() throws {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
-        let gene = try LivingTreeGene<MockGeneType>.random(depth: 2, template: template)
-        XCTAssertNotNil(gene)
-        XCTAssertTrue(gene.allNodes.count >= 1)
+        let env = LivingTreeEnvironment(
+            populationSize: 10,
+            selectionMethod: .roulette,
+            selectableProportion: 1.0,
+            mutationRate: 1.0,
+            crossoverRate: 1.0,
+            numberOfElites: 0,
+            numberOfEliteCopies: 0,
+            parameters: [:],
+            scalarMutationMagnitude: 1,
+            structuralMutationDeletionRate: 0.1,
+            structuralMutationAdditionRate: 0.1,
+            randomSource: RandomSource(seed: 42)
+        )
+        let genome = try LivingTreeGenome<MockGeneType>.random(depth: 2, template: template, environment: env)
+        XCTAssertFalse(genome.nodes.isEmpty)
     }
 
     func testStructuralAdditionMutation() throws {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
-        let gene = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
+        var genome = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
         let env = LivingTreeEnvironment(
             populationSize: 10,
             selectionMethod: .roulette,
@@ -166,17 +197,17 @@ extension LivingTreeTests {
             structuralMutationAdditionRate: 1.0 // Force addition
         )
         
-        try gene.mutate(rate: 1.0, environment: env)
-        XCTAssertFalse(gene.children.isEmpty)
+        try genome.mutate(rate: 1.0, environment: env)
+        XCTAssertTrue(genome.nodes.count > 1)
     }
 
     func testStructuralDeletionMutation() throws {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
-        let parent = LivingTreeGene<MockGeneType>(template, geneType: .binary, parent: nil, children: [])
-        parent.children = [
-            LivingTreeGene(template, geneType: .terminal, parent: parent, children: []),
-            LivingTreeGene(template, geneType: .terminal, parent: parent, children: [])
-        ]
+        var genome = LivingTreeGenome<MockGeneType>(nodes: [
+            FlatTreeNode(geneType: .binary, subtreeSize: 3),
+            FlatTreeNode(geneType: .terminal),
+            FlatTreeNode(geneType: .terminal)
+        ], template: template)
         
         let env = LivingTreeEnvironment(
             populationSize: 10,
@@ -192,21 +223,8 @@ extension LivingTreeTests {
             structuralMutationAdditionRate: 0.0
         )
         
-        try parent.mutate(rate: 1.0, environment: env)
-        XCTAssertTrue(parent.children.isEmpty)
-    }
-
-    func testTreeEnumeration() throws {
-        let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
-        let parent = LivingTreeGene<MockGeneType>(template, geneType: .binary, parent: nil, children: [])
-        parent.children = [
-            LivingTreeGene(template, geneType: .terminal, parent: parent, children: []),
-            LivingTreeGene(template, geneType: .terminal, parent: parent, children: [])
-        ]
-        
-        var count = 0
-        try parent.bottomUpEnumerate { _ in count += 1 }
-        XCTAssertEqual(count, 3)
-        XCTAssertEqual(parent.allNodes.count, 3)
+        try genome.mutate(rate: 1.0, environment: env)
+        XCTAssertEqual(genome.nodes.count, 1)
+        XCTAssertTrue(genome.nodes[0].geneType.isLeafType)
     }
 }

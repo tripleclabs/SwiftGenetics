@@ -19,18 +19,18 @@ final class LivingForestTests: XCTestCase {
     
     func testLivingForestGenomeInitialization() {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
-        let root1 = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
-        let root2 = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
+        let tree1 = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
+        let tree2 = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
         
-        let forest = LivingForestGenome(roots: [root1, root2])
+        let forest = LivingForestGenome(trees: [tree1, tree2])
         XCTAssertEqual(forest.trees.count, 2)
-        XCTAssertEqual(forest.trees[0].rootGene, root1)
+        XCTAssertEqual(forest.trees[0].nodes.count, 1)
     }
     
     func testLivingForestMutation() throws {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
-        let root = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
-        var forest = LivingForestGenome(roots: [root])
+        let tree = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
+        var forest = LivingForestGenome(trees: [tree])
         
         let env = LivingTreeEnvironment(
             populationSize: 10,
@@ -52,11 +52,11 @@ final class LivingForestTests: XCTestCase {
     
     func testLivingForestCrossover() throws {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
-        let root1 = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
-        let root2 = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
+        let tree1 = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
+        let tree2 = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
         
-        let forest1 = LivingForestGenome(roots: [root1])
-        let forest2 = LivingForestGenome(roots: [root2])
+        let forest1 = LivingForestGenome(trees: [tree1])
+        let forest2 = LivingForestGenome(trees: [tree2])
         
         let env = LivingTreeEnvironment(
             populationSize: 10,
@@ -79,12 +79,12 @@ final class LivingForestTests: XCTestCase {
     
     func testLivingForestCopy() {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
-        let root = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
-        let forest = LivingForestGenome(roots: [root])
+        let tree = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
+        let forest = LivingForestGenome(trees: [tree])
         let copy = forest.copy()
         
         XCTAssertEqual(copy.trees.count, 1)
-        XCTAssertFalse(copy.trees[0].rootGene === forest.trees[0].rootGene)
+        XCTAssertEqual(copy.trees[0].nodes, forest.trees[0].nodes)
     }
 
     static let allTests = [

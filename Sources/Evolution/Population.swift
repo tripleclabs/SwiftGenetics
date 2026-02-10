@@ -132,17 +132,21 @@ public struct Population<G: Genome>: Codable, Sendable, Equatable {
                     let progenitorA = mating.0
                     let progenitorB = mating.1
                     
+                    // Fork the environment to ensure deterministic randomness in this parallel task.
+                    var taskEnvironment = currentEnvironment
+                    taskEnvironment.randomSource = currentEnvironment.randomSource.fork(index: index)
+                    
                     // Perform crossover.
                     let rateA = progenitorA.genotype.individualCrossoverRate
                     let rateB = progenitorB.genotype.individualCrossoverRate
-                    let crossoverRate = rateA ?? rateB ?? currentEnvironment.crossoverRate
-                    var (progenyGenomeA, progenyGenomeB) = try progenitorA.genotype.crossover(with: progenitorB.genotype, rate: crossoverRate, environment: currentEnvironment)
+                    let crossoverRate = rateA ?? rateB ?? taskEnvironment.crossoverRate
+                    var (progenyGenomeA, progenyGenomeB) = try progenitorA.genotype.crossover(with: progenitorB.genotype, rate: crossoverRate, environment: taskEnvironment)
                     
                     // Perform mutation.
-                    let mutationRateA = progenyGenomeA.individualMutationRate ?? currentEnvironment.mutationRate
-                    try progenyGenomeA.mutate(rate: mutationRateA, environment: currentEnvironment)
-                    let mutationRateB = progenyGenomeB.individualMutationRate ?? currentEnvironment.mutationRate
-                    try progenyGenomeB.mutate(rate: mutationRateB, environment: currentEnvironment)
+                    let mutationRateA = progenyGenomeA.individualMutationRate ?? taskEnvironment.mutationRate
+                    try progenyGenomeA.mutate(rate: mutationRateA, environment: taskEnvironment)
+                    let mutationRateB = progenyGenomeB.individualMutationRate ?? taskEnvironment.mutationRate
+                    try progenyGenomeB.mutate(rate: mutationRateB, environment: taskEnvironment)
                     
                     // Return the mating index and the pair of children.
                     return (index, [

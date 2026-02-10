@@ -21,6 +21,7 @@ public struct LivingStringEnvironment: GeneticEnvironment {
 	public var numberOfElites: Int
 	public var numberOfEliteCopies: Int
 	public var parameters: [String : AnyCodable]
+    public var randomSource: RandomSource
 
 	// MARK: Implementation-Specific Constants
 
@@ -34,7 +35,8 @@ public struct LivingStringEnvironment: GeneticEnvironment {
 		crossoverRate: Double,
 		numberOfElites: Int,
 		numberOfEliteCopies: Int,
-		parameters: [String : AnyCodable]
+		parameters: [String : AnyCodable],
+        randomSource: RandomSource = RandomSource(seed: UInt64.random(in: 0...UInt64.max))
 	) {
 		self.populationSize = populationSize
 		self.selectionMethod = selectionMethod
@@ -44,5 +46,6 @@ public struct LivingStringEnvironment: GeneticEnvironment {
 		self.numberOfElites = numberOfElites
 		self.numberOfEliteCopies = numberOfEliteCopies
 		self.parameters = parameters
+        self.randomSource = randomSource
 	}
 }

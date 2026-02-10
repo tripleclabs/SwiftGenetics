@@ -26,13 +26,13 @@ public struct PermutationGenome<T: Codable & Hashable & Sendable>: Genome, Senda
     /// This preserves the uniqueness of the set (in-place mutation).
     public mutating func mutate(rate: Double, environment: Environment) {
         // In permutation problems, 'mutation rate' usually means probability of a swap occurring
-        guard Double.random(in: 0..<1) < rate else { return }
+        guard environment.randomSource.randomDouble() < rate else { return }
         
         guard elements.count > 1 else { return }
         
         // Swap Mutation
-        let idx1 = Int.random(in: 0..<elements.count)
-        let idx2 = Int.random(in: 0..<elements.count)
+        let idx1 = environment.randomSource.randomInt(in: 0..<elements.count)
+        let idx2 = environment.randomSource.randomInt(in: 0..<elements.count)
         elements.swapAt(idx1, idx2)
         
         // Optional: Add Scramble Mutation or Inversion Mutation logic here based on environment parameters
@@ -40,14 +40,14 @@ public struct PermutationGenome<T: Codable & Hashable & Sendable>: Genome, Senda
     
     /// Performs Order Crossover (OX1) to produce valid permutations.
     public func crossover(with partner: PermutationGenome<T>, rate: Double, environment: Environment) -> (PermutationGenome<T>, PermutationGenome<T>) {
-        guard Double.random(in: 0..<1) < rate else { return (self, partner) }
+        guard environment.randomSource.randomDouble() < rate else { return (self, partner) }
         guard self.elements.count > 1 else { return (self, partner) }
         
         // Helper function for OX1 Crossover
-        func performOX1(parent1: [T], parent2: [T]) -> [T] {
+        func performOX1(parent1: [T], parent2: [T], randomSource: RandomSource) -> [T] {
             let size = parent1.count
-            let p1 = Int.random(in: 0..<size - 1)
-            let p2 = Int.random(in: p1 + 1..<size)
+            let p1 = randomSource.randomInt(in: 0..<size - 1)
+            let p2 = randomSource.randomInt(in: p1 + 1..<size)
             
             // 1. Copy a slice from Parent 1
             var child = Array<T?>(repeating: nil, count: size)
@@ -72,8 +72,8 @@ public struct PermutationGenome<T: Codable & Hashable & Sendable>: Genome, Senda
             return child.map { $0! }
         }
         
-        let child1 = performOX1(parent1: self.elements, parent2: partner.elements)
-        let child2 = performOX1(parent1: partner.elements, parent2: self.elements)
+        let child1 = performOX1(parent1: self.elements, parent2: partner.elements, randomSource: environment.randomSource)
+        let child2 = performOX1(parent1: partner.elements, parent2: self.elements, randomSource: environment.randomSource)
         
         return (PermutationGenome(elements: child1), PermutationGenome(elements: child2))
     }
@@ -90,6 +90,7 @@ public struct PermutationEnvironment: GeneticEnvironment {
     public var numberOfElites: Int
     public var numberOfEliteCopies: Int
     public var parameters: [String : AnyCodable]
+    public var randomSource: RandomSource
     
     public init(
         populationSize: Int = 100,
@@ -98,7 +99,8 @@ public struct PermutationEnvironment: GeneticEnvironment {
         mutationRate: Double = 0.05,
         crossoverRate: Double = 0.8,
         numberOfElites: Int = 2,
-        numberOfEliteCopies: Int = 1
+        numberOfEliteCopies: Int = 1,
+        randomSource: RandomSource = RandomSource(seed: UInt64.random(in: 0...UInt64.max))
     ) {
         self.populationSize = populationSize
         self.selectionMethod = selectionMethod
@@ -108,5 +110,6 @@ public struct PermutationEnvironment: GeneticEnvironment {
         self.numberOfElites = numberOfElites
         self.numberOfEliteCopies = numberOfEliteCopies
         self.parameters = [:]
+        self.randomSource = randomSource
     }
 }

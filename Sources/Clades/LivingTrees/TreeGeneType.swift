@@ -9,7 +9,7 @@
 import Foundation
 
 /// An abstract interface that all tree gene types conform to.
-public protocol TreeGeneType: Hashable, Codable {
+public protocol TreeGeneType: Hashable, Codable, Sendable {
 	var childCount: Int { get }
 	var isBinaryType: Bool { get }
 	var isUnaryType: Bool { get }
@@ -32,7 +32,7 @@ extension TreeGeneType {
 
 
 /// Templates can enforce certain constraints and define gene type sampling.
-public struct TreeGeneTemplate<T: TreeGeneType>: Codable {
+public struct TreeGeneTemplate<T: TreeGeneType>: Codable, Sendable {
 	/// Sampling array for binary gene types.
 	let binaryTypes: [T]
 	/// Sampling array for unary gene types.
