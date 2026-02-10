@@ -18,6 +18,9 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
     /// A delegate for logging information from the GA.
     private let loggingDelegate: LogDelegate
     
+    /// A cache for fitness results to avoid redundant evaluations.
+    private let fitnessCache = FitnessCache<Eval.G>()
+    
     /// Creates a new evolution wrapper.
     public init(fitnessEvaluator: Eval, loggingDelegate: LogDelegate) {
         self.fitnessEvaluator = fitnessEvaluator
@@ -41,7 +44,7 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
             
             // Perform an epoch (selection, crossover, and mutation).
             // Selection now has access to evaluated fitness/objectives.
-            try population.epoch()
+            try await population.epoch()
             
             // Re-evaluate the new population (or the expanded population for NSGA-II).
             await evaluatePopulation(&population, threads: configuration.parallelEvaluationThreads)
@@ -67,6 +70,7 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
         let organisms = population.organisms
         let evolutionType = population.evolutionType
         let evaluator = self.fitnessEvaluator
+        let cache = self.fitnessCache
         
         // Performance Note: Implemented Chunking (Batching).
         // Instead of one task per organism, we split the work across the number of active processors.
@@ -87,18 +91,33 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
                     for (offset, organism) in organismSlice.enumerated() {
                         let originalIndex = startIndex + offset
                         
-                        // Skip if already evaluated
+                        // Skip if already evaluated in the current population object
                         if (evolutionType == .standard && organism.fitness != nil) ||
                            (evolutionType == .nsga2 && organism.objectives != nil) {
                             continue
                         }
                         
+                        // Check cache first
+                        if evolutionType == .nsga2 {
+                            if let cached = await cache.objectives(for: organism.genotype) {
+                                chunkResults.append((originalIndex, cached.first, cached))
+                                continue
+                            }
+                        } else {
+                            if let cached = await cache.fitness(for: organism.genotype) {
+                                chunkResults.append((originalIndex, cached, nil))
+                                continue
+                            }
+                        }
+                        
                         do {
                             if evolutionType == .nsga2 {
                                 let objectives = try await evaluator.objectivesFor(organism: organism)
+                                await cache.setObjectives(objectives, for: organism.genotype)
                                 chunkResults.append((originalIndex, objectives.first, objectives))
                             } else {
                                 let fit = try await evaluator.fitnessFor(organism: organism)
+                                await cache.setFitness(fit, for: organism.genotype)
                                 chunkResults.append((originalIndex, fit, nil))
                             }
                         } catch {

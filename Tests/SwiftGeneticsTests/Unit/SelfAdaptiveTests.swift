@@ -71,8 +71,8 @@ final class SelfAdaptiveTests: XCTestCase {
 
     // MARK: - Tests
 
-    func testPopulationUsesIndividualMutationRateForProgeny() throws {
-        let env = MockEnv(mutationRate: 0.1)
+    func testPopulationUsesIndividualMutationRateForProgeny() async throws {
+        let env = MockEnv(selectionMethod: .truncation(takePortion: 1.0), mutationRate: 0.1)
         var population = Population<ProgenySpyGenome>(environment: env, evolutionType: .standard)
         
         let g1 = ProgenySpyGenome()
@@ -87,7 +87,7 @@ final class SelfAdaptiveTests: XCTestCase {
         
         // This will trigger crossover (returning progeny with 0.77 and 0.88)
         // and then mutate those progeny using their individual rates.
-        try population.epoch()
+        try await population.epoch()
         
         XCTAssertEqual(population.organisms.count, 2)
         let progenyA = population.organisms[0].genotype
@@ -97,9 +97,9 @@ final class SelfAdaptiveTests: XCTestCase {
         XCTAssertEqual(progenyB.mutationRateReceived, 0.88)
     }
 
-    func testDirectCrossoverOverride() throws {
+    func testDirectCrossoverOverride() async throws {
         let observer = RateObserver()
-        let env = MockEnv(crossoverRate: 0.1)
+        let env = MockEnv(selectionMethod: .truncation(takePortion: 1.0), crossoverRate: 0.1)
         var population = Population<StaticSpyGenome>(environment: env, evolutionType: .standard)
         population.organisms = [
             Organism(genotype: StaticSpyGenome(individualCrossoverRate: 0.66, observer: observer)),
@@ -108,7 +108,7 @@ final class SelfAdaptiveTests: XCTestCase {
         population.organisms[0].fitness = 1.0
         population.organisms[1].fitness = 1.0
         
-        try population.epoch()
+        try await population.epoch()
         XCTAssertEqual(observer.lastCrossoverRate, 0.66)
     }
 

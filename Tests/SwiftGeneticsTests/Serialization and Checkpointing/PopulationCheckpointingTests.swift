@@ -5,7 +5,7 @@ final class PopulationCheckpointingTests: XCTestCase {
 	typealias RealGene = ContinuousGene<Double, LivingStringEnvironment>
 	typealias NeuroevolutionString = LivingStringGenome<RealGene>
 	
-	func testStringPopulationPersistence() throws {
+	func testStringPopulationPersistence() async throws {
 		// Define an environment that changes nothing.
 		let environment = LivingStringEnvironment(
 			populationSize: 4,
@@ -29,7 +29,7 @@ final class PopulationCheckpointingTests: XCTestCase {
 			population.organisms.append(organism)
 		}
 		// Perform one epoch.
-		try population.epoch()
+		try await population.epoch()
 		// Save population.
 		let tmpCheckpointURL = URL(fileURLWithPath: "/tmp/swiftgenetics_tests_\(UUID().uuidString)")
 		try! CheckpointManager<NeuroevolutionString>.save(population, to: tmpCheckpointURL)

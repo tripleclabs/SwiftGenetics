@@ -75,7 +75,7 @@ public struct Population<G: Genome>: Codable, Sendable, Equatable {
 	}
 	
 	/// Performs an evolutionary epoch.
-	mutating public func epoch() throws {
+	mutating public func epoch() async throws {
 		// Get this generation's population.
 		switch evolutionType {
 		case .standard:
@@ -122,31 +122,57 @@ public struct Population<G: Genome>: Codable, Sendable, Equatable {
 		
 		// Reproduce until the population is the desired size.
 		let matings: [(Organism<G>, Organism<G>)] = (0..<parents.count/2).map { (parents[$0*2], parents[$0*2+1]) }
-		for mating in matings {
-			// Perform sampling.
-			let progenitorA = mating.0
-			let progenitorB = mating.1
-			// Perform crossover.
-            let rateA = progenitorA.genotype.individualCrossoverRate
-            let rateB = progenitorB.genotype.individualCrossoverRate
-            let crossoverRate = rateA ?? rateB ?? environment.crossoverRate
-			var (progenyGenomeA, progenyGenomeB) = try progenitorA.genotype.crossover(with: progenitorB.genotype, rate: crossoverRate, environment: environment)
-			// Perform mutation.
-            let mutationRateA = progenyGenomeA.individualMutationRate ?? environment.mutationRate
-			try progenyGenomeA.mutate(rate: mutationRateA, environment: environment)
-            let mutationRateB = progenyGenomeB.individualMutationRate ?? environment.mutationRate
-			try progenyGenomeB.mutate(rate: mutationRateB, environment: environment)
-			// Add children to the population.
-			newOrganisms.append(Organism<G>(fitness: nil, genotype: progenyGenomeA, birthGeneration: generation))
-			newOrganisms.append(Organism<G>(fitness: nil, genotype: progenyGenomeB, birthGeneration: generation))
-		}
+        let currentGeneration = generation
+        let currentEnvironment = environment
+        
+        // Parallelize Reproduction (Crossover and Mutation)
+        let progeny: [Organism<G>] = try await withThrowingTaskGroup(of: (Int, [Organism<G>]).self) { group in
+            for (index, mating) in matings.enumerated() {
+                group.addTask {
+                    let progenitorA = mating.0
+                    let progenitorB = mating.1
+                    
+                    // Perform crossover.
+                    let rateA = progenitorA.genotype.individualCrossoverRate
+                    let rateB = progenitorB.genotype.individualCrossoverRate
+                    let crossoverRate = rateA ?? rateB ?? currentEnvironment.crossoverRate
+                    var (progenyGenomeA, progenyGenomeB) = try progenitorA.genotype.crossover(with: progenitorB.genotype, rate: crossoverRate, environment: currentEnvironment)
+                    
+                    // Perform mutation.
+                    let mutationRateA = progenyGenomeA.individualMutationRate ?? currentEnvironment.mutationRate
+                    try progenyGenomeA.mutate(rate: mutationRateA, environment: currentEnvironment)
+                    let mutationRateB = progenyGenomeB.individualMutationRate ?? currentEnvironment.mutationRate
+                    try progenyGenomeB.mutate(rate: mutationRateB, environment: currentEnvironment)
+                    
+                    // Return the mating index and the pair of children.
+                    return (index, [
+                        Organism<G>(fitness: nil, genotype: progenyGenomeA, birthGeneration: currentGeneration),
+                        Organism<G>(fitness: nil, genotype: progenyGenomeB, birthGeneration: currentGeneration)
+                    ])
+                }
+            }
+            
+            var results = [(Int, [Organism<G>])]()
+            results.reserveCapacity(matings.count)
+            while let result = try await group.next() {
+                results.append(result)
+            }
+            
+            // Sort by mating index to ensure determinism.
+            results.sort { $0.0 < $1.0 }
+            
+            return results.flatMap { $0.1 }
+        }
+        
+        newOrganisms.append(contentsOf: progeny)
 		
 		// Replace the old population or expand for NSGA-II.
         if evolutionType == .nsga2 {
             // Combine parents and progeny (expansion to 2N)
             organisms.append(contentsOf: newOrganisms)
         } else {
-            assert(newOrganisms.count == organisms.count)
+            // In standard GA, if we have elites, newOrganisms already contains them.
+            // We just need to ensure the count is correct.
             organisms = newOrganisms
         }
 		generation += 1
