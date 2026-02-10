@@ -1,9 +1,3 @@
-2. Quality & Architecture
-
-Generalized Tree Abstractions: 
-The LivingTrees and LivingForests clades are quite specialized. Refactoring them into a more generic TreeGenome that isn't tied to specific "living" naming conventions would make it more approachable for general-purpose genetic programming.
-
-
 3. Missing Features (The "Roadmap")
 Island Models: 
 Implementing "Migration" where multiple independent populations evolve separately and occasionally exchange their best individuals. This is a classic way to prevent premature convergence to local optima.
