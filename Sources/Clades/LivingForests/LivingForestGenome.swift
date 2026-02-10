@@ -28,17 +28,17 @@ public struct LivingForestGenome<GeneType: TreeGeneType>: Genome {
 		trees = roots.map { RealGene(rootGene: $0) }
 	}
 	
-	mutating public func mutate(rate: Double, environment: Environment) {
+	mutating public func mutate(rate: Double, environment: Environment) throws {
 		// Mutate each tree individually.
 		for idx in 0..<trees.count {
-			trees[idx].mutate(rate: rate, environment: environment)
+			try trees[idx].mutate(rate: rate, environment: environment)
 		}
 	}
 	
-	public func crossover(with partner: LivingForestGenome, rate: Double, environment: Environment) -> (LivingForestGenome, LivingForestGenome) {
+	public func crossover(with partner: LivingForestGenome, rate: Double, environment: Environment) throws -> (LivingForestGenome, LivingForestGenome) {
 		// Recombine each child individually, imagine how recombination works on chromosomes.
-		let zippedChildren = zip(trees, partner.trees).map {
-			return $0.0.crossover(with: $0.1, rate: rate, environment: environment)
+		let zippedChildren = try zip(trees, partner.trees).map {
+			return try $0.0.crossover(with: $0.1, rate: rate, environment: environment)
 		}
 		return (
 			LivingForestGenome(trees: zippedChildren.map { $0.0 }),

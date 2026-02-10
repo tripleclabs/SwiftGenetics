@@ -5,7 +5,7 @@ final class PopulationTests: XCTestCase {
     
     typealias G = LivingStringGenome<ContinuousGene<Double, LivingStringEnvironment>>
     
-    func testPopulationFitnessMetrics() {
+    func testPopulationFitnessMetrics() throws {
         let env = LivingStringEnvironment(
             populationSize: 4,
             selectionMethod: .roulette,
@@ -29,13 +29,13 @@ final class PopulationTests: XCTestCase {
         }
         
         // epoch() calls updateFitnessMetrics internally
-        population.epoch()
+        try population.epoch()
         
         XCTAssertEqual(population.bestOrganismInGeneration?.fitness, 4.0)
         XCTAssertEqual(population.averageFitness, 2.5)
     }
     
-    func testPopulationEpoch() {
+    func testPopulationEpoch() throws {
         let env = LivingStringEnvironment(
             populationSize: 4,
             selectionMethod: .roulette,
@@ -56,7 +56,7 @@ final class PopulationTests: XCTestCase {
         for i in 0..<4 { population.organisms[i].fitness = Double(i) }
         
         let initialGeneration = population.generation
-        population.epoch()
+        try population.epoch()
         
         XCTAssertEqual(population.generation, initialGeneration + 1)
         XCTAssertEqual(population.organisms.count, 4)

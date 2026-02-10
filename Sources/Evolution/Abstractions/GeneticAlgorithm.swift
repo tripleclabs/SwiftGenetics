@@ -24,14 +24,14 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
         self.loggingDelegate = loggingDelegate
     }
     
-    public func evolve(population: inout Population<Eval.G>, configuration: EvolutionAlgorithmConfiguration) async {
+    public func evolve(population: inout Population<Eval.G>, configuration: EvolutionAlgorithmConfiguration) async throws {
         for i in 0..<configuration.maxEpochs {
             // Log start of epoch.
             loggingDelegate.evolutionStartingEpoch(i)
             let startDate = Date()
             
             // Perform an epoch (mutation/crossover/selection).
-            population.epoch()
+            try population.epoch()
             
             // Calculate fitnesses concurrently using TaskGroup
             let organisms = population.organisms

@@ -68,4 +68,5 @@ fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
 feature_coverage/
+coverage_report/
 .vscode/

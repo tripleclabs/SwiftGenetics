@@ -38,7 +38,7 @@ public struct ContinuousGene<R: FloatingPoint & Hashable & Sendable, E: GeneticE
 		self.value = value
 	}
 	
-	mutating public func mutate(rate: Double, environment: ContinuousGene<R, E>.Environment) {
+	mutating public func mutate(rate: Double, environment: ContinuousGene<R, E>.Environment) throws {
 		guard Double.random(in: 0..<1) < rate else { return }
 		
 		// Get environmental mutation parameters.
@@ -53,15 +53,15 @@ public struct ContinuousGene<R: FloatingPoint & Hashable & Sendable, E: GeneticE
 		// Perform the appropriate mutation.
 		switch mutationType {
 		case .uniform:
-			value += ContinuousGene.genericize(Double.random(in: (-mutationSize)...mutationSize))
+			value += try ContinuousGene.genericize(Double.random(in: (-mutationSize)...mutationSize))
 		case .gaussian:
-			value += ContinuousGene.genericize(Double.randomGaussian(mu: 0.0, sigma: mutationSize))
+			value += try ContinuousGene.genericize(Double.randomGaussian(mu: 0.0, sigma: mutationSize))
 		}
 	}
 	
 	/// Converts the input `Double` into the gene's generic floating-point type.
 	/// This is slightly ugly, but I can't think of a cleaner way to do this.
-	private static func genericize(_ num: Double) -> R {
+	private static func genericize(_ num: Double) throws -> R {
 		switch R.self {
 		case is Float.Type:
 			return Float(num) as! R
@@ -72,7 +72,7 @@ public struct ContinuousGene<R: FloatingPoint & Hashable & Sendable, E: GeneticE
 		case is Double.Type:
 			return num as! R
 		default:
-			fatalError("Unhandled floating-point type.")
+			throw GeneticError.unexpectedType("Unhandled floating-point type: \(R.self)")
 		}
 	}
 	
@@ -96,7 +96,7 @@ public struct ContinuousGene<R: FloatingPoint & Hashable & Sendable, E: GeneticE
 		case is Double.Type:
 			try container.encode(value as! Double)
 		default:
-			fatalError("Unhandled floating-point type.")
+			throw GeneticError.unexpectedType("Unhandled floating-point type: \(R.self)")
 		}
 	}
 	
@@ -108,7 +108,7 @@ public struct ContinuousGene<R: FloatingPoint & Hashable & Sendable, E: GeneticE
 		case is Double.Type:
 			value = try ContinuousGene.genericize(values.decode(Double.self))
 		default:
-			fatalError("Unhandled floating-point type.")
+			throw GeneticError.unexpectedType("Unhandled floating-point type: \(R.self)")
 		}
 	}
 }

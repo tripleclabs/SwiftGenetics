@@ -16,7 +16,7 @@ final class GeneTests: XCTestCase {
     
     // MARK: - ContinuousGene
     
-    func testContinuousGeneMutation() {
+    func testContinuousGeneMutation() throws {
         var gene = ContinuousGene<Double, MockEnv>(value: 0.5)
         let env = MockEnv(parameters: [
             ContinuousEnvironmentParameter.mutationSize.rawValue: AnyCodable(0.1),
@@ -24,13 +24,13 @@ final class GeneTests: XCTestCase {
         ])
         
         // Mutate should change the value
-        gene.mutate(rate: 1.0, environment: env)
+        try gene.mutate(rate: 1.0, environment: env)
         XCTAssertNotEqual(gene.value, 0.5)
     }
     
     // MARK: - DiscreteChoiceGene
     
-    func testDiscreteChoiceGeneMutation() {
+    func testDiscreteChoiceGeneMutation() throws {
         enum Choice: String, DiscreteChoice {
             case a, b, c
         }
@@ -39,7 +39,7 @@ final class GeneTests: XCTestCase {
         let env = MockEnv()
         
         // Mutate should change the value eventually (stochastic but with rate 1.0 it should)
-        gene.mutate(rate: 1.0, environment: env)
+        try gene.mutate(rate: 1.0, environment: env)
     }
     
     // MARK: - Probability Distributions

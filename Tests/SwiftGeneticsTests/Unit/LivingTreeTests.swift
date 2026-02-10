@@ -36,7 +36,7 @@ final class LivingTreeTests: XCTestCase {
         XCTAssertTrue(gene.children.isEmpty)
     }
     
-    func testLivingTreeGeneMutation() {
+    func testLivingTreeGeneMutation() throws {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
         let gene = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
         let env = LivingTreeEnvironment(
@@ -54,11 +54,11 @@ final class LivingTreeTests: XCTestCase {
         )
         
         // Mutate terminal
-        gene.mutate(rate: 1.0, environment: env)
+        try gene.mutate(rate: 1.0, environment: env)
         XCTAssertNotNil(gene.geneType)
     }
     
-    func testLivingTreeGenomeOperations() {
+    func testLivingTreeGenomeOperations() throws {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
         let root = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
         let genome1 = LivingTreeGenome(rootGene: root)
@@ -80,10 +80,10 @@ final class LivingTreeTests: XCTestCase {
         
         // Mutate genome
         var mutableGenome = genome1
-        mutableGenome.mutate(rate: 1.0, environment: env)
+        try mutableGenome.mutate(rate: 1.0, environment: env)
         
         // Crossover
-        let (child1, child2) = genome1.crossover(with: genome2, rate: 1.0, environment: env)
+        let (child1, child2) = try genome1.crossover(with: genome2, rate: 1.0, environment: env)
         XCTAssertNotNil(child1.rootGene)
         XCTAssertNotNil(child2.rootGene)
     }
@@ -142,14 +142,14 @@ final class LivingTreeTests: XCTestCase {
 }
 
 extension LivingTreeTests {
-    func testRandomTreeGenesis() {
+    func testRandomTreeGenesis() throws {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
-        let gene = LivingTreeGene<MockGeneType>.random(depth: 2, template: template)
+        let gene = try LivingTreeGene<MockGeneType>.random(depth: 2, template: template)
         XCTAssertNotNil(gene)
         XCTAssertTrue(gene.allNodes.count >= 1)
     }
 
-    func testStructuralAdditionMutation() {
+    func testStructuralAdditionMutation() throws {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
         let gene = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
         let env = LivingTreeEnvironment(
@@ -166,11 +166,11 @@ extension LivingTreeTests {
             structuralMutationAdditionRate: 1.0 // Force addition
         )
         
-        gene.mutate(rate: 1.0, environment: env)
+        try gene.mutate(rate: 1.0, environment: env)
         XCTAssertFalse(gene.children.isEmpty)
     }
 
-    func testStructuralDeletionMutation() {
+    func testStructuralDeletionMutation() throws {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
         let parent = LivingTreeGene<MockGeneType>(template, geneType: .binary, parent: nil, children: [])
         parent.children = [
@@ -192,11 +192,11 @@ extension LivingTreeTests {
             structuralMutationAdditionRate: 0.0
         )
         
-        parent.mutate(rate: 1.0, environment: env)
+        try parent.mutate(rate: 1.0, environment: env)
         XCTAssertTrue(parent.children.isEmpty)
     }
 
-    func testTreeEnumeration() {
+    func testTreeEnumeration() throws {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
         let parent = LivingTreeGene<MockGeneType>(template, geneType: .binary, parent: nil, children: [])
         parent.children = [
@@ -205,7 +205,7 @@ extension LivingTreeTests {
         ]
         
         var count = 0
-        parent.bottomUpEnumerate { _ in count += 1 }
+        try parent.bottomUpEnumerate { _ in count += 1 }
         XCTAssertEqual(count, 3)
         XCTAssertEqual(parent.allNodes.count, 3)
     }

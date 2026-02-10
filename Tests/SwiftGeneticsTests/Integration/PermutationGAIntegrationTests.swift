@@ -24,7 +24,7 @@ final class PermutationGAIntegrationTests: XCTestCase {
         func evolutionFoundSolution(_ solution: G, fitness: Double) {}
     }
     
-    func testPermutationSortingGA() async {
+    func testPermutationSortingGA() async throws {
         let maxEpochs = 50
         let size = 10
         let environment = PermutationEnvironment(
@@ -48,7 +48,7 @@ final class PermutationGAIntegrationTests: XCTestCase {
         let ga = GeneticAlgorithm(fitnessEvaluator: evaluator, loggingDelegate: logDelegate)
         let config = EvolutionAlgorithmConfiguration(maxEpochs: maxEpochs, algorithmType: .standard)
         
-        await ga.evolve(population: &population, configuration: config)
+        try await ga.evolve(population: &population, configuration: config)
         
         let bestOrganism = population.bestOrganism!
         XCTAssertGreaterThan(bestOrganism.fitness ?? 0, 0)

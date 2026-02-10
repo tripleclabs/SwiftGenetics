@@ -38,10 +38,10 @@ final public class LivingTreeGene<GeneType: TreeGeneType>: Gene {
 		self.allowsCoefficient = allowsCoefficient
 	}
 	
-	public func mutate(rate: Double, environment: Environment) {
+	public func mutate(rate: Double, environment: Environment) throws {
 		guard Double.random(in: 0..<1) < rate else { return }
 		
-		performGeneTypeSpecificMutations(rate: rate, environment: environment)
+		try performGeneTypeSpecificMutations(rate: rate, environment: environment)
 		
 		var madeStructuralMutation = false
 		
@@ -68,7 +68,7 @@ final public class LivingTreeGene<GeneType: TreeGeneType>: Gene {
 				} else if geneType.isLeafType {
 					// nop
 				} else {
-					fatalError()
+					throw GeneticError.configurationError("Invalid gene type for structural addition: \(geneType)")
 				}
 				madeStructuralMutation = true
 			}
@@ -84,7 +84,7 @@ final public class LivingTreeGene<GeneType: TreeGeneType>: Gene {
 			} else if geneType.isLeafType {
 				geneType = template.leafTypes.filter { $0 != geneType }.randomElement() ?? geneType
 			} else {
-				fatalError()
+				throw GeneticError.configurationError("Invalid gene type for mutation: \(geneType)")
 			}
 		}
 	}
@@ -92,11 +92,11 @@ final public class LivingTreeGene<GeneType: TreeGeneType>: Gene {
 	// MARK: - Enumeration, tree operations, and book-keeping.
 	
 	/// Performs a bottom-up, depth-first enumeration of the tree, including self.
-	public func bottomUpEnumerate(eachNode fn: (LivingTreeGene) -> ()) {
+	public func bottomUpEnumerate(eachNode fn: (LivingTreeGene) throws -> ()) throws {
 		for child in children {
-			child.bottomUpEnumerate(eachNode: fn)
+			try child.bottomUpEnumerate(eachNode: fn)
 		}
-		fn(self)
+		try fn(self)
 	}
 	
 	/// Returns all nodes in the subtree, including the current gene.
@@ -159,7 +159,7 @@ final public class LivingTreeGene<GeneType: TreeGeneType>: Gene {
 
 extension LivingTreeGene {
 	/// Perform mutations that are specific to the living tree's `GeneType`.
-	func performGeneTypeSpecificMutations(rate: Double, environment: Environment) {
+	func performGeneTypeSpecificMutations(rate: Double, environment: Environment) throws {
 		// Default implementation is intentionally empty.
 	}
 }

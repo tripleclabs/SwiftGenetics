@@ -22,37 +22,39 @@ public struct LivingTreeGenome<GeneType: TreeGeneType>: Genome {
 		self.rootGene = rootGene
 	}
 	
-	mutating public func mutate(rate: Double, environment: Environment) {
-		rootGene.bottomUpEnumerate { gene in
-			gene.mutate(rate: rate, environment: environment)
+	mutating public func mutate(rate: Double, environment: Environment) throws {
+		try rootGene.bottomUpEnumerate { gene in
+			try gene.mutate(rate: rate, environment: environment)
 		}
 	}
 	
-	public func crossover(with partner: LivingTreeGenome, rate: Double, environment: Environment) -> (LivingTreeGenome, LivingTreeGenome) {
+	public func crossover(with partner: LivingTreeGenome, rate: Double, environment: Environment) throws -> (LivingTreeGenome, LivingTreeGenome) {
 		guard Double.random(in: 0..<1) < rate else { return (self, partner) }
 		guard partner.rootGene.children.count > 1 && self.rootGene.children.count > 1 else { return (self, partner) }
 		
 		var childRootA = self.rootGene.copy()
 		var childRootB = partner.rootGene.copy()
 		
-		let crossoverRootA = childRootA.allNodes.randomElement()!
-		let crossoverRootB = childRootB.allNodes.randomElement()!
+		guard let crossoverRootA = childRootA.allNodes.randomElement(),
+			  let crossoverRootB = childRootB.allNodes.randomElement() else {
+			return (self, partner)
+		}
 		
 		let crossoverRootAOriginalParent = crossoverRootA.parent
-		let crossoverRootBOriginalParent = crossoverRootA.parent
+		let crossoverRootBOriginalParent = crossoverRootB.parent
 		
 		// Crossover to create first child.
 		if let parent = crossoverRootBOriginalParent {
 			crossoverRootA.parent = parent
 		} else {
-			childRootB = crossoverRootB
+			childRootB = crossoverRootA
 		}
 		
 		// Crossover to create second child.
 		if let parent = crossoverRootAOriginalParent {
 			crossoverRootB.parent = parent
 		} else {
-			childRootA = crossoverRootA
+			childRootA = crossoverRootB
 		}
 		
 		return (

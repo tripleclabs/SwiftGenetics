@@ -23,7 +23,7 @@ final class GATests: XCTestCase {
         func evolutionFoundSolution(_ solution: G, fitness: Double) { foundSolutionCalled = true }
     }
     
-    func testGAExecution() async {
+    func testGAExecution() async throws {
         let env = LivingStringEnvironment(
             populationSize: 2,
             selectionMethod: .roulette,
@@ -47,7 +47,7 @@ final class GATests: XCTestCase {
         let ga = GeneticAlgorithm<MockEvaluator, MockLogDelegate>(fitnessEvaluator: evaluator, loggingDelegate: logDelegate)
         let config = EvolutionAlgorithmConfiguration(maxEpochs: 1, algorithmType: .standard)
         
-        await ga.evolve(population: &population, configuration: config)
+        try await ga.evolve(population: &population, configuration: config)
         
         XCTAssertTrue(logDelegate.startingEpochCalled)
         XCTAssertTrue(logDelegate.finishedEpochCalled)

@@ -23,13 +23,13 @@ public struct LivingStringGenome<GeneType: Gene>: Genome where GeneType.Environm
 		self.genes = genes
 	}
 	
-	mutating public func mutate(rate: Double, environment: Environment) {
+	mutating public func mutate(rate: Double, environment: Environment) throws {
 		for i in 0..<genes.count {
-			genes[i].mutate(rate: rate, environment: environment)
+			try genes[i].mutate(rate: rate, environment: environment)
 		}
 	}
 	
-	public func crossover(with partner: LivingStringGenome, rate: Double, environment: Environment) -> (LivingStringGenome, LivingStringGenome) {
+	public func crossover(with partner: LivingStringGenome, rate: Double, environment: Environment) throws -> (LivingStringGenome, LivingStringGenome) {
 		guard Double.random(in: 0..<1) < rate else { return (self, partner) }
 		guard partner.genes.count > 1 && self.genes.count > 1 else { return (self, partner) }
 		

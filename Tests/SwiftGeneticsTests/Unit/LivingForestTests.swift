@@ -27,7 +27,7 @@ final class LivingForestTests: XCTestCase {
         XCTAssertEqual(forest.trees[0].rootGene, root1)
     }
     
-    func testLivingForestMutation() {
+    func testLivingForestMutation() throws {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
         let root = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
         var forest = LivingForestGenome(roots: [root])
@@ -46,11 +46,11 @@ final class LivingForestTests: XCTestCase {
             structuralMutationAdditionRate: 0.1
         )
         
-        forest.mutate(rate: 1.0, environment: env)
+        try forest.mutate(rate: 1.0, environment: env)
         XCTAssertEqual(forest.trees.count, 1)
     }
     
-    func testLivingForestCrossover() {
+    func testLivingForestCrossover() throws {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
         let root1 = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
         let root2 = LivingTreeGene<MockGeneType>(template, geneType: .terminal, parent: nil, children: [])
@@ -72,7 +72,7 @@ final class LivingForestTests: XCTestCase {
             structuralMutationAdditionRate: 0.1
         )
         
-        let (child1, child2) = forest1.crossover(with: forest2, rate: 1.0, environment: env)
+        let (child1, child2) = try forest1.crossover(with: forest2, rate: 1.0, environment: env)
         XCTAssertEqual(child1.trees.count, 1)
         XCTAssertEqual(child2.trees.count, 1)
     }

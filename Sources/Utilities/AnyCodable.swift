@@ -39,7 +39,7 @@ public struct AnyCodable: Codable, @unchecked Sendable {
                 self.value = value
             }
         } else {
-            fatalError("Cannot decode unknown value.")
+            throw GeneticError.decodingError("Cannot decode unknown AnyCodable value.")
         }
     }
 
@@ -62,7 +62,7 @@ public struct AnyCodable: Codable, @unchecked Sendable {
         case let value as Double:
             try container.encode(value)
         default:
-            fatalError("Cannot encode unknown value.")
+            throw GeneticError.unexpectedType("Cannot encode unknown AnyCodable value type: \(type(of: value))")
         }
     }
 }

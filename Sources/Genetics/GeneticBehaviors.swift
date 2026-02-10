@@ -53,7 +53,7 @@ public enum SelectionMethod: Codable, Sendable, Equatable {
 			let takePortion = try values.decode(Double.self, forKey: .truncationTakePortion)
 			self = .truncation(takePortion: takePortion)
 		default:
-			fatalError("Unknown method string.")
+			throw GeneticError.decodingError("Unknown selection method string: \(methodString)")
 		}
 	}
 }
@@ -61,11 +61,11 @@ public enum SelectionMethod: Codable, Sendable, Equatable {
 /// Implemented by types that can undergo mutation.
 public protocol Mutatable: GeneticEnvironmentAssociable {
 	/// Perform mutation. Non-idempotent.
-	mutating func mutate(rate: Double, environment: Environment)
+	mutating func mutate(rate: Double, environment: Environment) throws
 }
 
 /// Implemented by types that can be recombined with a partner.
 public protocol Crossoverable: GeneticEnvironmentAssociable {
 	/// Perform genetic recombintion with the specified partner. Idempotent.
-	func crossover(with partner: Self, rate: Double, environment: Environment) -> (Self, Self)
+	func crossover(with partner: Self, rate: Double, environment: Environment) throws -> (Self, Self)
 }

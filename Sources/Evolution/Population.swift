@@ -73,7 +73,7 @@ public struct Population<G: Genome>: Codable, Sendable, Equatable {
 	}
 	
 	/// Performs an evolutionary epoch.
-	mutating public func epoch() {
+	mutating public func epoch() throws {
 		// Get this generation's population.
 		switch evolutionType {
 		case .standard:
@@ -88,17 +88,19 @@ public struct Population<G: Genome>: Codable, Sendable, Equatable {
 		var newOrganisms = [Organism<G>]()
 		
 		// Perform elite sampling.
-		newOrganisms.append(contentsOf: elitesFromPopulation())
+		newOrganisms.append(contentsOf: try elitesFromPopulation())
 		
 		// Sample parents.
 		let numberOfParents = (environment.populationSize - newOrganisms.count) + ((environment.populationSize - newOrganisms.count) % 2)
 		var parents = [Organism<G>]()
 		switch environment.selectionMethod {
 		case .roulette:
-			guard environment.selectableProportion == 1.0 else { fatalError("Unimplemented.") } // TODO: Support roulette sampling with `selectableProportion`.
-			parents = (0..<numberOfParents).map { _ in organismFromRoulette() }
+			guard environment.selectableProportion == 1.0 else {
+                throw GeneticError.unimplemented("Roulette sampling with selectableProportion != 1.0 is not yet supported.")
+            }
+			parents = try (0..<numberOfParents).map { _ in try organismFromRoulette() }
 		case let .tournament(size: size):
-			parents = (0..<numberOfParents).map { _ in organismFromTournament(size: size) }
+			parents = try (0..<numberOfParents).map { _ in try organismFromTournament(size: size) }
 		case let .truncation(takePortion: portion):
 			while parents.count < numberOfParents {
 				parents += organisms.suffix(Int(Double(organisms.count) * portion * environment.selectableProportion)).suffix(numberOfParents) // NOTE: the truncation's `takePortion` stacks on top of the environment's `selectableProportion`.
@@ -114,10 +116,10 @@ public struct Population<G: Genome>: Codable, Sendable, Equatable {
 			let progenitorA = mating.0
 			let progenitorB = mating.1
 			// Perform crossover.
-			var (progenyGenomeA, progenyGenomeB) = progenitorA.genotype.crossover(with: progenitorB.genotype, rate: environment.crossoverRate, environment: environment)
+			var (progenyGenomeA, progenyGenomeB) = try progenitorA.genotype.crossover(with: progenitorB.genotype, rate: environment.crossoverRate, environment: environment)
 			// Perform mutation.
-			progenyGenomeA.mutate(rate: environment.mutationRate, environment: environment)
-			progenyGenomeB.mutate(rate: environment.mutationRate, environment: environment)
+			try progenyGenomeA.mutate(rate: environment.mutationRate, environment: environment)
+			try progenyGenomeB.mutate(rate: environment.mutationRate, environment: environment)
 			// Add children to the population.
 			newOrganisms.append(Organism<G>(fitness: nil, genotype: progenyGenomeA, birthGeneration: generation))
 			newOrganisms.append(Organism<G>(fitness: nil, genotype: progenyGenomeB, birthGeneration: generation))

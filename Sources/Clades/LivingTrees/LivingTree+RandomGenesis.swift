@@ -11,7 +11,7 @@ import Foundation
 extension LivingTreeGene {
 	
 	/// Returns a random, recursively built tree subject to certain constraints.
-	public static func random(onlyNonLeaf: Bool = false, depth: Int = 1, parent: LivingTreeGene? = nil, template: TreeGeneTemplate<GeneType>) -> LivingTreeGene {
+	public static func random(onlyNonLeaf: Bool = false, depth: Int = 1, parent: LivingTreeGene? = nil, template: TreeGeneTemplate<GeneType>) throws -> LivingTreeGene {
 		let randomType = onlyNonLeaf ? template.nonLeafTypes.randomElement()! : template.allTypes.randomElement()!
 		let gene = LivingTreeGene(template, geneType: randomType, parent: parent, children: [])
 		if randomType.isBinaryType {
@@ -22,8 +22,8 @@ extension LivingTreeGene {
 				]
 			} else {
 				gene.children = [
-					random(onlyNonLeaf: onlyNonLeaf, depth: depth - 1, parent: gene, template: template),
-					random(onlyNonLeaf: onlyNonLeaf, depth: depth - 1, parent: gene, template: template)
+					try random(onlyNonLeaf: onlyNonLeaf, depth: depth - 1, parent: gene, template: template),
+					try random(onlyNonLeaf: onlyNonLeaf, depth: depth - 1, parent: gene, template: template)
 				]
 			}
 		} else if randomType.isUnaryType {
@@ -31,7 +31,7 @@ extension LivingTreeGene {
 		} else if randomType.isLeafType {
 			// nop
 		} else {
-			fatalError()
+			throw GeneticError.configurationError("Unexpected gene type in random genesis: \(randomType)")
 		}
 		return gene
 	}

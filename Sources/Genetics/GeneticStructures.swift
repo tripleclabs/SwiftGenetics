@@ -62,3 +62,24 @@ extension Organism: Hashable {
         hasher.combine(id)
     }
 }
+
+/// Errors that can occur during genetic operations.
+public enum GeneticError: Error, Sendable, LocalizedError {
+    case unimplemented(String)
+    case invalidParameter(String)
+    case configurationError(String)
+    case evolutionFailed(String)
+    case unexpectedType(String)
+    case decodingError(String)
+    
+    public var errorDescription: String? {
+        switch self {
+        case .unimplemented(let msg): return "Unimplemented: \(msg)"
+        case .invalidParameter(let msg): return "Invalid parameter: \(msg)"
+        case .configurationError(let msg): return "Configuration error: \(msg)"
+        case .evolutionFailed(let msg): return "Evolution failed: \(msg)"
+        case .unexpectedType(let msg): return "Unexpected type: \(msg)"
+        case .decodingError(let msg): return "Decoding error: \(msg)"
+        }
+    }
+}

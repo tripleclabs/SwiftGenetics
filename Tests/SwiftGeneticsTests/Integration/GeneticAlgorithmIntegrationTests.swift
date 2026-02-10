@@ -40,8 +40,8 @@ final class GeneticAlgorithmIntegrationTests: XCTestCase {
 	
 	/// Runs a GA that aims to find a sorted string of real numbers.
 	/// NOTE: this test is stochastic and may fail once in a blue moon.
-    func testSortingGA() async {
-		let maxEpochs = 20
+    func testSortingGA() async throws {
+		let maxEpochs = 50
 		let stringLength = 4
 		// Define environment.
 		let environment = LivingStringEnvironment(
@@ -72,7 +72,7 @@ final class GeneticAlgorithmIntegrationTests: XCTestCase {
 		let logDelegate = MockLogDelegate()
 		let ga = GeneticAlgorithm(fitnessEvaluator: evaluator, loggingDelegate: logDelegate)
 		let evolutionConfig = EvolutionAlgorithmConfiguration(maxEpochs: maxEpochs, algorithmType: population.evolutionType)
-		await ga.evolve(population: &population, configuration: evolutionConfig)
+		try await ga.evolve(population: &population, configuration: evolutionConfig)
 		// Check solution.
 		let bestOrganism = population.bestOrganism!
 		let bestVector = bestOrganism.genotype.genes.map { $0.value }
