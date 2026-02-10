@@ -16,6 +16,8 @@ public enum SelectionMethod: Codable, Sendable, Equatable {
 	/// Takes all the organisms in the population and selects the best portion
 	/// of them. `takePortion` is in (0,1].
 	case truncation(takePortion: Double)
+    /// NSGA-II crossover selection.
+    case nsga2
 	
 	// MARK: - Coding.
 	
@@ -37,6 +39,8 @@ public enum SelectionMethod: Codable, Sendable, Equatable {
 		case let .truncation(takePortion: takePortion):
 			try container.encode("truncation", forKey: .method)
 			try container.encode(takePortion, forKey: .truncationTakePortion)
+        case .nsga2:
+            try container.encode("nsga2", forKey: .method)
 		}
 	}
 	
@@ -52,6 +56,8 @@ public enum SelectionMethod: Codable, Sendable, Equatable {
 		case "truncation":
 			let takePortion = try values.decode(Double.self, forKey: .truncationTakePortion)
 			self = .truncation(takePortion: takePortion)
+        case "nsga2":
+            self = .nsga2
 		default:
 			throw GeneticError.decodingError("Unknown selection method string: \(methodString)")
 		}

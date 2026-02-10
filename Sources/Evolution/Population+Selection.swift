@@ -55,5 +55,28 @@ extension Population {
 		let playerIndices = (0..<size).map { _ in Int.random(in: (organisms.count - selectableCount)..<organisms.count) }
 		return organisms[playerIndices.max()!]
 	}
+    
+    /// Perform crowded tournament sampling for NSGA-II.
+    internal func organismFromCrowdedTournament() throws -> Organism<G> {
+        guard !organisms.isEmpty else {
+            throw GeneticError.evolutionFailed("Cannot sample from an empty population.")
+        }
+        
+        let i = Int.random(in: 0..<organisms.count)
+        let j = Int.random(in: 0..<organisms.count)
+        let p = organisms[i]
+        let q = organisms[j]
+        
+        // Crowded-comparison operator
+        if p.dominanceRank < q.dominanceRank {
+            return p
+        } else if q.dominanceRank < p.dominanceRank {
+            return q
+        } else if p.crowdingDistance > q.crowdingDistance {
+            return p
+        } else {
+            return q
+        }
+    }
 	
 }

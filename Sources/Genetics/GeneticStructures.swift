@@ -46,12 +46,25 @@ public struct Organism<G: Genome>: Codable, Sendable, Identifiable {
     /// The generation that this organism was created in, or -1.
     public var birthGeneration: Int
     
+    // MARK: - Multi-Objective Metadata (NSGA-II)
+    
+    /// This organism's objective fitness values, or `nil` if unknown.
+    /// Lower values are assumed to be better (minimization), or as defined by the problem.
+    public var objectives: [Double]?
+    /// The dominance rank (front index) in NSGA-II.
+    public var dominanceRank: Int = 0
+    /// The crowding distance used for diversity preservation.
+    public var crowdingDistance: Double = 0.0
+    
     /// Creates a new organism.
     public init(fitness: Double? = nil, genotype: G, birthGeneration: Int = -1) {
         self.id = UUID()
         self.fitness = fitness
         self.genotype = genotype
         self.birthGeneration = birthGeneration
+        self.objectives = nil
+        self.dominanceRank = 0
+        self.crowdingDistance = 0.0
     }
 }
 

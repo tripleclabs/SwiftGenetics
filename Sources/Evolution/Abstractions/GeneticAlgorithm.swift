@@ -35,36 +35,52 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
             
             // Calculate fitnesses concurrently using TaskGroup
             let organisms = population.organisms
-            await withTaskGroup(of: (Int, Double).self) { group in
+            let evolutionType = population.evolutionType
+            await withTaskGroup(of: (Int, Double?, [Double]?).self) { group in
                 for (index, organism) in organisms.enumerated() {
-                    // Only evaluate if fitness is nil
-                    if organism.fitness == nil {
+                    // Only evaluate if fitness/objectives are nil
+                    if (evolutionType == .standard && organism.fitness == nil) || (evolutionType == .nsga2 && organism.objectives == nil) {
                         let evaluator = self.fitnessEvaluator
                         // Capture explicitly for Sendable closure
                         group.addTask {
                             do {
-                                let fit = try await evaluator.fitnessFor(organism: organism)
-                                return (index, fit)
+                                if evolutionType == .nsga2 {
+                                    let objectives = try await evaluator.objectivesFor(organism: organism)
+                                    return (index, objectives.first, objectives)
+                                } else {
+                                    let fit = try await evaluator.fitnessFor(organism: organism)
+                                    return (index, fit, nil)
+                                }
                             } catch {
                                 print("Error evaluating fitness: \(error)")
-                                return (index, 0.0) // Handle error appropriately
+                                return (index, 0.0, nil) // Handle error appropriately
                             }
                         }
                     }
                 }
                 
                 // Collect results locally
-                var results = [(Int, Double)]()
+                var results = [(Int, Double?, [Double]?)]()
                 for await result in group {
                     results.append(result)
                 }
                 
                 // Now apply results to population
-                for (index, fitness) in results {
-                    population.organisms[index].fitness = fitness
+                for (index, fitness, objectives) in results {
+                    if let fitness = fitness {
+                        population.organisms[index].fitness = fitness
+                    }
+                    if let objectives = objectives {
+                        population.organisms[index].objectives = objectives
+                    }
                     // Check for solution callback logic if needed
-                    loggingDelegate.evolutionFoundSolution(population.organisms[index].genotype, fitness: fitness)
+                    loggingDelegate.evolutionFoundSolution(population.organisms[index].genotype, fitness: fitness ?? (objectives?.first ?? 0.0))
                 }
+            }
+            
+            // If NSGA-II, perform survival selection (truncation back to N) after evaluation.
+            if evolutionType == .nsga2 {
+                population.truncateNSGA2()
             }
             
             // Print epoch statistics.

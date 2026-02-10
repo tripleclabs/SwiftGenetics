@@ -11,6 +11,8 @@
 public enum EvolutionAlgorithmType: String, Codable, Sendable {
 	/// A standard, single-objective genetic algorithm.
 	case standard
+    /// Nondominated Sorting Genetic Algorithm II (Multi-objective).
+    case nsga2
 }
 
 /// A world of organisms, genericized by a type of genome.
@@ -79,6 +81,9 @@ public struct Population<G: Genome>: Codable, Sendable, Equatable {
 		case .standard:
 			// Sort existing population. Fit organisms are at the end.
 			organisms.sort()
+        case .nsga2:
+            // NSGA-II sorts after evaluation, so we don't sort here.
+            break
 		}
 		
 		// Update the population's fitness metrics for the epoch.
@@ -87,8 +92,11 @@ public struct Population<G: Genome>: Codable, Sendable, Equatable {
 		// Create a new, empty population.
 		var newOrganisms = [Organism<G>]()
 		
-		// Perform elite sampling.
-		newOrganisms.append(contentsOf: try elitesFromPopulation())
+        // Standard evolution replacements
+        if evolutionType == .standard {
+            // Perform elite sampling.
+            newOrganisms.append(contentsOf: try elitesFromPopulation())
+        }
 		
 		// Sample parents.
 		let numberOfParents = (environment.populationSize - newOrganisms.count) + ((environment.populationSize - newOrganisms.count) % 2)
@@ -106,6 +114,9 @@ public struct Population<G: Genome>: Codable, Sendable, Equatable {
 				parents += organisms.suffix(Int(Double(organisms.count) * portion * environment.selectableProportion)).suffix(numberOfParents) // NOTE: the truncation's `takePortion` stacks on top of the environment's `selectableProportion`.
 			}
 			parents = parents.suffix(numberOfParents)
+        case .nsga2:
+            // Use Crowded Tournament Selection for NSGA-II
+            parents = try (0..<numberOfParents).map { _ in try organismFromCrowdedTournament() }
 		}
 		assert(parents.count == numberOfParents)
 		
@@ -130,9 +141,21 @@ public struct Population<G: Genome>: Codable, Sendable, Equatable {
 			newOrganisms.append(Organism<G>(fitness: nil, genotype: progenyGenomeB, birthGeneration: generation))
 		}
 		
-		// Replace the old population.
-		assert(newOrganisms.count == organisms.count)
-		organisms = newOrganisms
+		// Replace the old population or expand for NSGA-II.
+        if evolutionType == .nsga2 {
+            // Combine parents and progeny (expansion to 2N)
+            organisms.append(contentsOf: newOrganisms)
+        } else {
+            assert(newOrganisms.count == organisms.count)
+            organisms = newOrganisms
+        }
 		generation += 1
 	}
+    
+    /// Truncates the population to its desired size using NSGA-II sorting and ranking.
+    /// Should be called after fitness evaluation.
+    mutating public func truncateNSGA2() {
+        guard evolutionType == .nsga2 else { return }
+        organisms = NSGA2.sortAndTruncate(organisms, to: environment.populationSize)
+    }
 }
