@@ -147,7 +147,7 @@ public struct NSGA2 {
     
     /// Returns true if $p$ dominates $q$.
     /// Definition: $p$ is no worse than $q$ in all objectives, and strictly better in at least one.
-    /// This implementation assumes MINIMIZATION (lower is better).
+    /// This implementation assumes MAXIMIZATION (larger is better).
     public static func dominates<G: Genome>(_ p: Organism<G>, _ q: Organism<G>) -> Bool {
         guard let pObj = p.objectives, let qObj = q.objectives, pObj.count == qObj.count else {
             return (p.fitness ?? 0.0) > (q.fitness ?? 0.0) // Fallback to single fitness
@@ -155,10 +155,10 @@ public struct NSGA2 {
         
         var betterInAtLeastOne = false
         for i in 0..<pObj.count {
-            if pObj[i] > qObj[i] { // p is worse than q
+            if pObj[i] < qObj[i] { // p is worse than q in maximization
                 return false
             }
-            if pObj[i] < qObj[i] { // p is strictly better than q
+            if pObj[i] > qObj[i] { // p is strictly better than q in maximization
                 betterInAtLeastOne = true
             }
         }

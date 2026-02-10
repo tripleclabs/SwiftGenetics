@@ -51,7 +51,7 @@ public struct Population<G: Genome>: Codable, Sendable, Equatable {
 	// MARK: - Evolution
 	
 	/// Updates the population's fitness metrics for an epoch.
-	private mutating func updateFitnessMetrics() {
+	public mutating func updateFitnessMetrics() {
 		totalFitness = 0.0
 		var highestSoFar = -Double.greatestFiniteMagnitude
 		var lowestSoFar = Double.greatestFiniteMagnitude

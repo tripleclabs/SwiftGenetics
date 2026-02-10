@@ -44,18 +44,26 @@ public struct LivingTreeGenome<GeneType: TreeGeneType>: Genome {
 		let crossoverRootBOriginalParent = crossoverRootB.parent
 		
 		// Crossover to create first child.
-		if let parent = crossoverRootBOriginalParent {
-			crossoverRootA.parent = parent
-		} else {
-			childRootB = crossoverRootA
-		}
-		
-		// Crossover to create second child.
 		if let parent = crossoverRootAOriginalParent {
-			crossoverRootB.parent = parent
+            if let index = parent.children.firstIndex(where: { $0 === crossoverRootA }) {
+                parent.children[index] = crossoverRootB
+            }
 		} else {
 			childRootA = crossoverRootB
 		}
+		
+		// Crossover to create second child.
+		if let parent = crossoverRootBOriginalParent {
+            if let index = parent.children.firstIndex(where: { $0 === crossoverRootB }) {
+                parent.children[index] = crossoverRootA
+            }
+		} else {
+			childRootB = crossoverRootA
+		}
+        
+        // Ensure all parent back-pointers are correct after structural swap.
+        childRootA.recursivelyResetParents()
+        childRootB.recursivelyResetParents()
 		
 		return (
 			LivingTreeGenome(rootGene: childRootA),

@@ -28,24 +28,24 @@ final class MultiObjectiveTests: XCTestCase {
     func testParetoDominance() {
         let g = ContGenome(values: [])
         
-        // Minimization: A dominates B if A is no worse in all, and better in at least one.
+        // Maximization: A dominates B if A is no worse in all, and better in at least one.
         var a = Organism(genotype: g)
-        a.objectives = [1.0, 1.0]
+        a.objectives = [2.0, 2.0]
         
         var b = Organism(genotype: g)
-        b.objectives = [2.0, 2.0]
+        b.objectives = [1.0, 1.0]
         
         XCTAssertTrue(NSGA2.dominates(a, b))
         XCTAssertFalse(NSGA2.dominates(b, a))
         
         var c = Organism(genotype: g)
-        c.objectives = [1.0, 2.0]
+        c.objectives = [2.0, 1.0]
         
         XCTAssertTrue(NSGA2.dominates(a, c))
         XCTAssertTrue(NSGA2.dominates(c, b))
         
         var d = Organism(genotype: g)
-        d.objectives = [2.0, 1.0]
+        d.objectives = [1.0, 2.0]
         
         // c and d should not dominate each other (non-dominated)
         XCTAssertFalse(NSGA2.dominates(c, d))
@@ -55,11 +55,11 @@ final class MultiObjectiveTests: XCTestCase {
     func testNonDominatedSort() {
         let g = ContGenome(values: [])
         
-        let o1 = Organism(genotype: g); var p1 = o1; p1.objectives = [1.0, 5.0] // Front 1
-        let o2 = Organism(genotype: g); var p2 = o2; p2.objectives = [2.0, 2.0] // Front 1
-        let o3 = Organism(genotype: g); var p3 = o3; p3.objectives = [5.0, 1.0] // Front 1
-        let o4 = Organism(genotype: g); var p4 = o4; p4.objectives = [3.0, 3.0] // Dominated by p2 (Front 2)
-        let o5 = Organism(genotype: g); var p5 = o5; p5.objectives = [6.0, 6.0] // Front 3?
+        let o1 = Organism(genotype: g); var p1 = o1; p1.objectives = [10.0, 2.0] // Front 1
+        let o2 = Organism(genotype: g); var p2 = o2; p2.objectives = [5.0, 5.0]  // Front 1
+        let o3 = Organism(genotype: g); var p3 = o3; p3.objectives = [2.0, 10.0] // Front 1
+        let o4 = Organism(genotype: g); var p4 = o4; p4.objectives = [4.0, 4.0]  // Dominated by p2 (Front 2)
+        let o5 = Organism(genotype: g); var p5 = o5; p5.objectives = [1.0, 1.0]  // Front 3
         
         let population = [p1, p2, p3, p4, p5]
         let fronts = NSGA2.fastNonDominatedSort(population)
@@ -78,9 +78,9 @@ final class MultiObjectiveTests: XCTestCase {
             return 0.0 // not used
         }
         func objectivesFor(organism: Organism<G>) async throws -> [Double] {
-            // Minimize f1(x) = x[0]^2, f2(x) = (x[0]-2)^2
+            // Maximize f1(x) = x[0], f2(x) = 10 - x[0]
             let x = organism.genotype.values[0]
-            return [pow(x, 2), pow(x - 2, 2)]
+            return [x, 10.0 - x]
         }
     }
     
