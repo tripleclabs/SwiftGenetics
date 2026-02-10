@@ -10,10 +10,7 @@ LivingTreeGene is a recursive class-based structure. For very large trees or pop
 
 2. Quality & Architecture
 
-Error Handling: 
-The library uses fatalError in several critical paths (like unimplemented selection proportion logic or mismatched types). Replacing these with a robust throws pattern would make the library more production-ready.
 Generalized Tree Abstractions: 
-
 The LivingTrees and LivingForests clades are quite specialized. Refactoring them into a more generic TreeGenome that isn't tied to specific "living" naming conventions would make it more approachable for general-purpose genetic programming.
 
 Protocol-Oriented Randomness: 

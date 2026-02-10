@@ -116,10 +116,15 @@ public struct Population<G: Genome>: Codable, Sendable, Equatable {
 			let progenitorA = mating.0
 			let progenitorB = mating.1
 			// Perform crossover.
-			var (progenyGenomeA, progenyGenomeB) = try progenitorA.genotype.crossover(with: progenitorB.genotype, rate: environment.crossoverRate, environment: environment)
+            let rateA = progenitorA.genotype.individualCrossoverRate
+            let rateB = progenitorB.genotype.individualCrossoverRate
+            let crossoverRate = rateA ?? rateB ?? environment.crossoverRate
+			var (progenyGenomeA, progenyGenomeB) = try progenitorA.genotype.crossover(with: progenitorB.genotype, rate: crossoverRate, environment: environment)
 			// Perform mutation.
-			try progenyGenomeA.mutate(rate: environment.mutationRate, environment: environment)
-			try progenyGenomeB.mutate(rate: environment.mutationRate, environment: environment)
+            let mutationRateA = progenyGenomeA.individualMutationRate ?? environment.mutationRate
+			try progenyGenomeA.mutate(rate: mutationRateA, environment: environment)
+            let mutationRateB = progenyGenomeB.individualMutationRate ?? environment.mutationRate
+			try progenyGenomeB.mutate(rate: mutationRateB, environment: environment)
 			// Add children to the population.
 			newOrganisms.append(Organism<G>(fitness: nil, genotype: progenyGenomeA, birthGeneration: generation))
 			newOrganisms.append(Organism<G>(fitness: nil, genotype: progenyGenomeB, birthGeneration: generation))

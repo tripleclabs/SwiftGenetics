@@ -21,7 +21,17 @@ public protocol GeneticEnvironmentAssociable {
 public protocol Gene: Mutatable, Codable, Sendable, Hashable { }
 
 /// A collection of genes.
-public protocol Genome: Mutatable, Crossoverable, Codable, Sendable, Hashable { }
+public protocol Genome: Mutatable, Crossoverable, Codable, Sendable, Hashable {
+    /// Individual-specific mutation rate, or `nil` to use the environment's default.
+    var individualMutationRate: Double? { get }
+    /// Individual-specific crossover rate, or `nil` to use the environment's default.
+    var individualCrossoverRate: Double? { get }
+}
+
+extension Genome {
+    public var individualMutationRate: Double? { nil }
+    public var individualCrossoverRate: Double? { nil }
+}
 
 /// Represents a specific, individual organism with a fitness and genome.
 /// - Note: Refactored to a struct for Swift 6 Sendable safety.
