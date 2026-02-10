@@ -4,6 +4,7 @@
 //
 //  Created by Santiago Gonzalez on 11/15/18.
 //  Copyright © 2018 Santiago Gonzalez. All rights reserved.
+//  Copyright © 2026 Triple C Labs GmbH. All rights reserved.
 //
 
 import Foundation
@@ -38,14 +39,14 @@ final public class LivingTreeGene<GeneType: TreeGeneType>: Gene {
 	}
 	
 	public func mutate(rate: Double, environment: Environment) {
-		guard Double.fastRandomUniform() < rate else { return }
+		guard Double.random(in: 0..<1) < rate else { return }
 		
 		performGeneTypeSpecificMutations(rate: rate, environment: environment)
 		
 		var madeStructuralMutation = false
 		
 		// Deletion mutations.
-		if Double.fastRandomUniform() < environment.structuralMutationDeletionRate {
+		if Double.random(in: 0..<1) < environment.structuralMutationDeletionRate {
 			if !children.isEmpty {
 				children = []
 				geneType = template.leafTypes.randomElement()!
@@ -54,7 +55,7 @@ final public class LivingTreeGene<GeneType: TreeGeneType>: Gene {
 		}
 		
 		// Addition mutations.
-		if Double.fastRandomUniform() < environment.structuralMutationAdditionRate {
+		if Double.random(in: 0..<1) < environment.structuralMutationAdditionRate {
 			if children.isEmpty {
 				geneType = template.nonLeafTypes.randomElement()!
 				if geneType.isBinaryType {

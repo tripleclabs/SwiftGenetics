@@ -4,16 +4,17 @@
 //
 //  Created by Santiago Gonzalez on 11/7/18.
 //  Copyright © 2018 Santiago Gonzalez. All rights reserved.
+//  Copyright © 2026 Triple C Labs GmbH. All rights reserved.
 //
 
 /// Defines broad types of genetic algorithms.
-public enum EvolutionAlgorithmType: String, Codable {
+public enum EvolutionAlgorithmType: String, Codable, Sendable {
 	/// A standard, single-objective genetic algorithm.
 	case standard
 }
 
 /// A world of organisms, genericized by a type of genome.
-public class Population<G: Genome>: Codable {
+public struct Population<G: Genome>: Codable, Sendable, Equatable {
 	
 	public typealias Environment = G.Environment
 	
@@ -27,16 +28,16 @@ public class Population<G: Genome>: Codable {
 	public var organisms: [Organism<G>] = []
 	
 	/// The current generation.
-	private(set) public var generation = 0
+	public var generation = 0
 	/// The best organism of all time.
-	private(set) public var bestOrganism: Organism<G>?
+	public var bestOrganism: Organism<G>?
 	/// The best organism in the current generation.
-	private(set) public var bestOrganismInGeneration: Organism<G>?
+	public var bestOrganismInGeneration: Organism<G>?
 	
 	/// The total fitness of all organisms in this generation.
-	private(set) internal var totalFitness: Double = 0.0
+	public var totalFitness: Double = 0.0
 	/// This average fitness of this generation's organisms.
-	private(set) internal var averageFitness: Double = 0.0
+	public var averageFitness: Double = 0.0
 	
 	
 	/// Creates a new, empty population with the given environment configuration.
@@ -45,48 +46,34 @@ public class Population<G: Genome>: Codable {
 		self.evolutionType = evolutionType
 	}
 	
-	// MARK: - Coding.
-	
-	/// Coding keys for `Codable`.
-	enum CodingKeys: String, CodingKey {
-		case environment
-		case evolutionType
-		case organisms
-		case generation
-		case bestOrganism
-		case bestOrganismInGeneration
-		case totalFitness
-		case averageFitness
-	}
-	
 	// MARK: - Evolution
 	
 	/// Updates the population's fitness metrics for an epoch.
-	private func updateFitnessMetrics() {
+	private mutating func updateFitnessMetrics() {
 		totalFitness = 0.0
 		var highestSoFar = -Double.greatestFiniteMagnitude
 		var lowestSoFar = Double.greatestFiniteMagnitude
 		for organism in organisms {
-			if organism.fitness != nil {
-				if organism.fitness > highestSoFar { // This is a better organism.
-					highestSoFar = organism.fitness
+			if let fitness = organism.fitness {
+				if fitness > highestSoFar { // This is a better organism.
+					highestSoFar = fitness
 					bestOrganismInGeneration = organism
 					// Check if we have a new best organism.
-					if organism.fitness > bestOrganism?.fitness ?? -Double.greatestFiniteMagnitude {
+					if fitness > bestOrganism?.fitness ?? -Double.greatestFiniteMagnitude {
 						bestOrganism = organism
 					}
 				}
-				if organism.fitness < lowestSoFar { // This is a worse organism.
-					lowestSoFar = organism.fitness
+				if fitness < lowestSoFar { // This is a worse organism.
+					lowestSoFar = fitness
 				}
-				totalFitness += organism.fitness
+				totalFitness += fitness
 			}
 		}
-		averageFitness = totalFitness / Double(organisms.count)
+		averageFitness = organisms.isEmpty ? 0.0 : totalFitness / Double(organisms.count)
 	}
 	
 	/// Performs an evolutionary epoch.
-	public func epoch() {
+	mutating public func epoch() {
 		// Get this generation's population.
 		switch evolutionType {
 		case .standard:

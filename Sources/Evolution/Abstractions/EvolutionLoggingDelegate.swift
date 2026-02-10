@@ -4,12 +4,13 @@
 //
 //  Created by Santiago Gonzalez on 7/3/19.
 //  Copyright © 2019 Santiago Gonzalez. All rights reserved.
+//  Copyright © 2026 Triple C Labs GmbH. All rights reserved.
 //
 
 import Foundation
 
 /// Implemented by types that can receive log events for a GA.
-public protocol EvolutionLoggingDelegate {
+public protocol EvolutionLoggingDelegate: Sendable {
 	associatedtype G: Genome
 	
 	/// Called at the beginning of an epoch.

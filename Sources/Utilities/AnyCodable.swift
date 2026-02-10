@@ -3,12 +3,13 @@
 //  
 //
 //  Created by Santiago Gonzalez on 12/6/19.
+//  Copyright © 2026 Triple C Labs GmbH. All rights reserved.
 //
 
 import Foundation
 
 /// A type-erasing wrapper for `Codable`.
-public struct AnyCodable: Codable {
+public struct AnyCodable: Codable, @unchecked Sendable {
 
 	public let value: Any
 	
@@ -63,5 +64,20 @@ public struct AnyCodable: Codable {
         default:
             fatalError("Cannot encode unknown value.")
         }
+    }
+}
+
+extension AnyCodable: Equatable {
+    public static func == (lhs: AnyCodable, rhs: AnyCodable) -> Bool {
+        // This is a simple way to compare type-erased Codable values.
+        // For dictionaries, ordering might be an issue with raw Data comparison,
+        // but for these tests it should be sufficient or better than the raw test check.
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        guard let lhsData = try? encoder.encode(lhs),
+              let rhsData = try? encoder.encode(rhs) else {
+            return false
+        }
+        return lhsData == rhsData
     }
 }

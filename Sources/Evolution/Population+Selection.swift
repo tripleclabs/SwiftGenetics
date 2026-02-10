@@ -4,6 +4,7 @@
 //
 //  Created by Santiago Gonzalez on 6/27/19.
 //  Copyright © 2019 Santiago Gonzalez. All rights reserved.
+//  Copyright © 2026 Triple C Labs GmbH. All rights reserved.
 //
 
 import Foundation
@@ -28,10 +29,10 @@ extension Population {
 		guard totalFitness != 0 else {
 			return organisms.randomElement()!
 		}
-		let slice = totalFitness > 0 ? Double.fastRandomUniform() * totalFitness : 0.0
+		let slice = totalFitness > 0 ? Double.random(in: 0..<1) * totalFitness : 0.0
 		var cumulativeFitness = 0.0
 		for organism in organisms {
-			cumulativeFitness += organism.fitness
+			cumulativeFitness += organism.fitness ?? 0.0
 			if cumulativeFitness >= slice {
 				return organism
 			}

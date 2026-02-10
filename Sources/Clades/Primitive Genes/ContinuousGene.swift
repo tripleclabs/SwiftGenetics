@@ -4,6 +4,7 @@
 //
 //  Created by Santiago Gonzalez on 10/25/19.
 //  Copyright © 2019 Santiago Gonzalez. All rights reserved.
+//  Copyright © 2026 Triple C Labs GmbH. All rights reserved.
 //
 
 import Foundation
@@ -25,7 +26,7 @@ public enum ContinuousEnvironmentParameter: String {
 }
 
 /// Represents a single continuous value that can be evolved.
-public struct ContinuousGene<R: FloatingPoint, E: GeneticEnvironment>: Gene, Equatable, Hashable {
+public struct ContinuousGene<R: FloatingPoint & Hashable & Sendable, E: GeneticEnvironment>: Gene, Equatable, Hashable {
 	public typealias Environment = E
 	public typealias Param = ContinuousEnvironmentParameter
 	
@@ -38,7 +39,7 @@ public struct ContinuousGene<R: FloatingPoint, E: GeneticEnvironment>: Gene, Equ
 	}
 	
 	mutating public func mutate(rate: Double, environment: ContinuousGene<R, E>.Environment) {
-		guard Double.fastRandomUniform() < rate else { return }
+		guard Double.random(in: 0..<1) < rate else { return }
 		
 		// Get environmental mutation parameters.
 		guard let mutationSize = environment.parameters[Param.mutationSize.rawValue]!.value as? Double else {
@@ -63,8 +64,10 @@ public struct ContinuousGene<R: FloatingPoint, E: GeneticEnvironment>: Gene, Equ
 		switch R.self {
 		case is Float.Type:
 			return Float(num) as! R
+		#if arch(x86_64)
 		case is Float80.Type:
 			return Float80(num) as! R
+		#endif
 		case is Double.Type:
 			return num as! R
 		default:

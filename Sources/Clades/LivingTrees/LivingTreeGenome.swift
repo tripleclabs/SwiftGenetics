@@ -4,6 +4,7 @@
 //
 //  Created by Santiago Gonzalez on 6/28/19.
 //  Copyright © 2019 Santiago Gonzalez. All rights reserved.
+//  Copyright © 2026 Triple C Labs GmbH. All rights reserved.
 //
 
 import Foundation
@@ -28,7 +29,7 @@ public struct LivingTreeGenome<GeneType: TreeGeneType>: Genome {
 	}
 	
 	public func crossover(with partner: LivingTreeGenome, rate: Double, environment: Environment) -> (LivingTreeGenome, LivingTreeGenome) {
-		guard Double.fastRandomUniform() < rate else { return (self, partner) }
+		guard Double.random(in: 0..<1) < rate else { return (self, partner) }
 		guard partner.rootGene.children.count > 1 && self.rootGene.children.count > 1 else { return (self, partner) }
 		
 		var childRootA = self.rootGene.copy()

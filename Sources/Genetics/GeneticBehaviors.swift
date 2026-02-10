@@ -4,10 +4,11 @@
 //
 //  Created by Santiago Gonzalez on 11/7/18.
 //  Copyright © 2018 Santiago Gonzalez. All rights reserved.
+//  Copyright © 2026 Triple C Labs GmbH. All rights reserved.
 //
 
 /// Defines different techniques for candidate selection.
-public enum SelectionMethod: Codable {
+public enum SelectionMethod: Codable, Sendable, Equatable {
 	/// Roulette / fitness proportionate selection.
 	case roulette
 	/// Tournament selection, with a tournament size that's greater than 0.

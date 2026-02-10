@@ -4,6 +4,7 @@
 //
 //  Created by Santiago Gonzalez on 6/13/19.
 //  Copyright © 2019 Santiago Gonzalez. All rights reserved.
+//  Copyright © 2026 Triple C Labs GmbH. All rights reserved.
 //
 
 import Foundation
@@ -20,3 +21,16 @@ extension LivingTreeGene: Equatable {
 	}
 	
 }
+
+extension LivingTreeGene: Hashable {
+	
+	public func hash(into hasher: inout Hasher) {
+		hasher.combine(coefficient)
+		hasher.combine(allowsCoefficient)
+		hasher.combine(geneType)
+		hasher.combine(children)
+	}
+	
+}
+
+extension LivingTreeGene: @unchecked Sendable { }

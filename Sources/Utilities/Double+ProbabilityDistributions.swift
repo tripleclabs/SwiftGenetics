@@ -4,6 +4,7 @@
 //
 //  Created by Santiago Gonzalez on 4/21/19.
 //  Copyright © 2019 Santiago Gonzalez. All rights reserved.
+//  Copyright © 2026 Triple C Labs GmbH. All rights reserved.
 //
 
 import Foundation
@@ -28,7 +29,7 @@ extension Double {
 		var q = 0.0
 		var z = 0.0
 		
-		u = Double.fastRandomUniform()
+		u = Double.random(in: 0..<1)
 		if u < 0.5 {
 			t = sqrt(-2.0 * log(u))
 		} else {

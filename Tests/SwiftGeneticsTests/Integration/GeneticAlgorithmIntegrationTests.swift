@@ -7,9 +7,9 @@ final class GeneticAlgorithmIntegrationTests: XCTestCase {
 	
 	/// Evaluates whether strings are sorted in ascending order. One point is added
 	/// to the fitness for each consecutive pair of sorted values.
-	struct SortedFitnessEvaluator: SynchronousFitnessEvaluator {
+	struct SortedFitnessEvaluator: FitnessEvaluator {
 		typealias G = NeuroevolutionString
-		mutating func fitnessFor(organism: Organism<G>, solutionCallback: (G, Double) -> ()) -> FitnessResult {
+		func fitnessFor(organism: Organism<G>) async throws -> Double {
 			var fitness = 0.0
 			for i in 0..<(organism.genotype.genes.count - 1) {
 				let left = organism.genotype.genes[i]
@@ -18,7 +18,7 @@ final class GeneticAlgorithmIntegrationTests: XCTestCase {
 					fitness += 1
 				}
 			}
-			return FitnessResult(fitness: fitness)
+			return fitness
 		}
 	}
 	
@@ -40,7 +40,7 @@ final class GeneticAlgorithmIntegrationTests: XCTestCase {
 	
 	/// Runs a GA that aims to find a sorted string of real numbers.
 	/// NOTE: this test is stochastic and may fail once in a blue moon.
-    func testSortingGA() {
+    func testSortingGA() async {
 		let maxEpochs = 20
 		let stringLength = 4
 		// Define environment.
@@ -58,28 +58,28 @@ final class GeneticAlgorithmIntegrationTests: XCTestCase {
 			]
 		)
 		// Build initial population.
-		let population = Population<NeuroevolutionString>(environment: environment, evolutionType: .standard)
+		var population = Population<NeuroevolutionString>(environment: environment, evolutionType: .standard)
 		for _ in 0..<environment.populationSize {
 			// Create random vectors where `x_i ~ Uniform(0,1)`.
-			let weights = (0..<stringLength).map { _ in Double.fastRandomUniform() }
+			let weights = (0..<stringLength).map { _ in Double.random(in: 0..<1) }
 			let genes = weights.map { RealGene(value: $0) }
 			let genotype = NeuroevolutionString(genes: genes)
-			let organism = Organism<LivingStringGenome>(fitness: nil, genotype: genotype)
+			let organism = Organism<NeuroevolutionString>(fitness: nil, genotype: genotype)
 			population.organisms.append(organism)
 		}
 		// Evolve!
 		let evaluator = SortedFitnessEvaluator()
 		let logDelegate = MockLogDelegate()
-		let ga = ConcurrentSynchronousEvaluationGA(fitnessEvaluator: evaluator, loggingDelegate: logDelegate)
+		let ga = GeneticAlgorithm(fitnessEvaluator: evaluator, loggingDelegate: logDelegate)
 		let evolutionConfig = EvolutionAlgorithmConfiguration(maxEpochs: maxEpochs, algorithmType: population.evolutionType)
-		ga.evolve(population: population, configuration: evolutionConfig)
+		await ga.evolve(population: &population, configuration: evolutionConfig)
 		// Check solution.
 		let bestOrganism = population.bestOrganism!
 		let bestVector = bestOrganism.genotype.genes.map { $0.value }
 		XCTAssertEqual(bestVector, bestVector.sorted())
     }
 
-    static var allTests = [
+    static let allTests = [
         ("testSortingGA", testSortingGA),
     ]
 }

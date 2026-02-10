@@ -21,11 +21,11 @@ final class PopulationCheckpointingTests: XCTestCase {
 			]
 		)
 		// Build initial population.
-		let population = Population<NeuroevolutionString>(environment: environment, evolutionType: .standard)
+		var population = Population<NeuroevolutionString>(environment: environment, evolutionType: .standard)
 		for i in 0..<environment.populationSize {
 			let genes = [RealGene(value: Double(i)), RealGene(value: Double(i))]
 			let genotype = NeuroevolutionString(genes: genes)
-			let organism = Organism<LivingStringGenome>(fitness: nil, genotype: genotype)
+			let organism = Organism<NeuroevolutionString>(fitness: nil, genotype: genotype)
 			population.organisms.append(organism)
 		}
 		// Perform one epoch.
@@ -38,14 +38,12 @@ final class PopulationCheckpointingTests: XCTestCase {
 		// Perform checks.
 		XCTAssertEqual(population.generation, reconstitutedPopulation.generation)
 		XCTAssertEqual(population.organisms, reconstitutedPopulation.organisms)
-		let originalJSON = try! JSONEncoder().encode(population)
-		let reconstitutedJSON = try! JSONEncoder().encode(reconstitutedPopulation)
-		XCTAssertEqual(originalJSON, reconstitutedJSON)
+		XCTAssertEqual(population, reconstitutedPopulation)
 		// Cleanup
 		try! FileManager.default.removeItem(at: tmpCheckpointURL)
 	}
 
-    static var allTests = [
+    static let allTests = [
         ("testStringPopulationPersistence", testStringPopulationPersistence),
     ]
 }

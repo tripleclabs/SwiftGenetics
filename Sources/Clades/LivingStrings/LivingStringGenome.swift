@@ -4,6 +4,7 @@
 //
 //  Created by Santiago Gonzalez on 7/9/19.
 //  Copyright © 2019 Santiago Gonzalez. All rights reserved.
+//  Copyright © 2026 Triple C Labs GmbH. All rights reserved.
 //
 
 import Foundation
@@ -29,10 +30,10 @@ public struct LivingStringGenome<GeneType: Gene>: Genome where GeneType.Environm
 	}
 	
 	public func crossover(with partner: LivingStringGenome, rate: Double, environment: Environment) -> (LivingStringGenome, LivingStringGenome) {
-		guard Double.fastRandomUniform() < rate else { return (self, partner) }
+		guard Double.random(in: 0..<1) < rate else { return (self, partner) }
 		guard partner.genes.count > 1 && self.genes.count > 1 else { return (self, partner) }
 		
-		let percentPoint = Double.fastRandomUniform()
+		let percentPoint = Double.random(in: 0..<1)
 		let crossoverPointA = Int(Double(self.genes.count) * percentPoint)
 		let crossoverPointB = Int(Double(partner.genes.count) * percentPoint)
 		

@@ -4,13 +4,14 @@
 //
 //  Created by Santiago Gonzalez on 7/25/19.
 //  Copyright © 2019 Santiago Gonzalez. All rights reserved.
+//  Copyright © 2026 Triple C Labs GmbH. All rights reserved.
 //
 
 import Foundation
 
 /// DIfferent types of categorical distributions should implement this protocol.
 /// - Note: Any `CaseIterable` `enum` with `Codable` conformance supports `DiscreteChoice` out of the box.
-public protocol DiscreteChoice: CaseIterable, Hashable, Codable { }
+public protocol DiscreteChoice: CaseIterable, Hashable, Codable, Sendable { }
 
 /// A single gene that represents a discrete, categorical choice.
 public struct DiscreteChoiceGene<C: DiscreteChoice, E: GeneticEnvironment>: Gene {
@@ -25,7 +26,7 @@ public struct DiscreteChoiceGene<C: DiscreteChoice, E: GeneticEnvironment>: Gene
 	}
 	
 	mutating public func mutate(rate: Double, environment: DiscreteChoiceGene<C, E>.Environment) {
-		guard Double.fastRandomUniform() < rate else { return }
+		guard Double.random(in: 0..<1) < rate else { return }
 		
 		// Select a new choice randomly.
 		choice = C.allCases.filter { $0 != choice }.randomElement()!

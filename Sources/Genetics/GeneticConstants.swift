@@ -4,10 +4,11 @@
 //
 //  Created by Santiago Gonzalez on 11/7/18.
 //  Copyright © 2018 Santiago Gonzalez. All rights reserved.
+//  Copyright © 2026 Triple C Labs GmbH. All rights reserved.
 //
 
 /// A basic collection of constants in any genetic algorithm.
-public protocol GeneticConstants {
+public protocol GeneticConstants: Sendable {
 	/// The number of entities in the population.
 	var populationSize: Int { get }
 	

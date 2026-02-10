@@ -4,6 +4,7 @@
 //
 //  Created by Santiago Gonzalez on 7/3/19.
 //  Copyright © 2019 Santiago Gonzalez. All rights reserved.
+//  Copyright © 2026 Triple C Labs GmbH. All rights reserved.
 //
 
 import Foundation
@@ -21,25 +22,25 @@ public struct EvolutionAlgorithmConfiguration {
 	}
 }
 
-/// Implemented by types that contain a GA, simplifying the process of evolution
-/// to only require a starting population and a fitness evaluator.
-public protocol EvolutionWrapper {
+/// Implemented by types that can be evolved.
+public protocol EvolutionWrapper: Sendable {
 	associatedtype Eval: FitnessEvaluator
 	
 	/// The fitness evaluator that the GA uses.
 	var fitnessEvaluator: Eval { get }
 	/// Runs evolution on the given start population, for a maximum number of epochs.
-	func evolve(population: Population<Eval.G>, configuration: EvolutionAlgorithmConfiguration)
+	func evolve(population: inout Population<Eval.G>, configuration: EvolutionAlgorithmConfiguration) async
 	
 	/// The functions that are called after each epoch.
-	var afterEachEpochFns: [(Int) -> ()] { get set }
+	var afterEachEpochFns: [@Sendable (Int) async -> ()] { get set }
+	
 	/// Calls the passed function after each epoch. The function takes the completed generation's number.
 	/// - Note: This function just provides syntactic sugar.
-	mutating func afterEachEpoch(_ afterEachEpochFn: @escaping (Int) -> ())
+	mutating func afterEachEpoch(_ afterEachEpochFn: @escaping @Sendable (Int) async -> ())
 }
 
 extension EvolutionWrapper {
-	mutating public func afterEachEpoch(_ afterEachEpochFn: @escaping (Int) -> ()) {
+	mutating public func afterEachEpoch(_ afterEachEpochFn: @escaping @Sendable (Int) async -> ()) {
 		afterEachEpochFns.append(afterEachEpochFn)
 	}
 }
