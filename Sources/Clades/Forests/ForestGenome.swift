@@ -1,5 +1,5 @@
 //
-//  LivingForestGenome.swift
+//  ForestGenome.swift
 //  SwiftGenetics
 //
 //  Created by Santiago Gonzalez on 6/11/19.
@@ -10,9 +10,9 @@ import Foundation
 
 /// An evolvable forest of one or more independent trees.
 /// Note: Forests have homogeneous gene types for now.
-public struct LivingForestGenome<GeneType: TreeGeneType>: Genome {
+public struct ForestGenome<GeneType: TreeGeneType>: Genome {
 	
-	public typealias RealGene = LivingTreeGenome<GeneType>
+	public typealias RealGene = TreeGenome<GeneType>
 	public typealias Environment = RealGene.Environment
 	
 	/// The child trees in the forest.
@@ -30,7 +30,7 @@ public struct LivingForestGenome<GeneType: TreeGeneType>: Genome {
 		}
 	}
 	
-	public func crossover(with partner: LivingForestGenome, rate: Double, environment: Environment) throws -> (LivingForestGenome, LivingForestGenome) {
+	public func crossover(with partner: ForestGenome, rate: Double, environment: Environment) throws -> (ForestGenome, ForestGenome) {
 		// Recombine each child individually, imagine how recombination works on chromosomes.
 		var trees1 = [RealGene]()
 		var trees2 = [RealGene]()
@@ -42,19 +42,19 @@ public struct LivingForestGenome<GeneType: TreeGeneType>: Genome {
             trees2.append(c2)
 		}
 		return (
-			LivingForestGenome(trees: trees1),
-			LivingForestGenome(trees: trees2)
+			ForestGenome(trees: trees1),
+			ForestGenome(trees: trees2)
 		)
 	}
 	
 	/// Returns a deep copy.
-	public func copy() -> LivingForestGenome {
-		return LivingForestGenome(trees: trees.map { $0.copy() })
+	public func copy() -> ForestGenome {
+		return ForestGenome(trees: trees.map { $0.copy() })
 	}
 	
 }
 
-extension LivingForestGenome: RawRepresentable {
+extension ForestGenome: RawRepresentable {
 	public typealias RawValue = [RealGene]
 	public var rawValue: RawValue { return trees }
 	public init?(rawValue: RawValue) {

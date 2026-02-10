@@ -1,5 +1,5 @@
 //
-//  LivingTreeEnvironment.swift
+//  TreeEnvironment.swift
 //  SwiftGenetics
 //
 //  Created by Santiago Gonzalez on 6/27/19.
@@ -9,7 +9,7 @@
 import Foundation
 
 /// The environment configuration for an ecosystem of living trees.
-public struct LivingTreeEnvironment: GeneticEnvironment {
+public struct TreeEnvironment: GeneticEnvironment {
 	
 	// MARK: Genetic Constants
 	

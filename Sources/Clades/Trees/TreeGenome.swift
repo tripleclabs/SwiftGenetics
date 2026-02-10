@@ -1,5 +1,5 @@
 /// An evolvable tree represented as a flat array of nodes in prefix order (Polish Notation).
-public struct LivingTreeGenome<GeneType: TreeGeneType>: Genome {
+public struct TreeGenome<GeneType: TreeGeneType>: Genome {
     
     public typealias Node = FlatTreeNode<GeneType>
     
@@ -90,7 +90,7 @@ public struct LivingTreeGenome<GeneType: TreeGeneType>: Genome {
     
     // MARK: - Crossover
     
-    public func crossover(with partner: LivingTreeGenome, rate: Double, environment: Environment) throws -> (LivingTreeGenome, LivingTreeGenome) {
+    public func crossover(with partner: TreeGenome, rate: Double, environment: Environment) throws -> (TreeGenome, TreeGenome) {
         guard environment.randomSource.randomDouble() < rate else { return (self, partner) }
         
         // Pick a random subtree in each parent
@@ -106,8 +106,8 @@ public struct LivingTreeGenome<GeneType: TreeGeneType>: Genome {
         var newNodesB = partner.nodes
         newNodesB.replaceSubrange(indexB..<(indexB + partner.nodes[indexB].subtreeSize), with: subtreeA)
         
-        var childA = LivingTreeGenome(nodes: newNodesA, template: template)
-        var childB = LivingTreeGenome(nodes: newNodesB, template: template)
+        var childA = TreeGenome(nodes: newNodesA, template: template)
+        var childB = TreeGenome(nodes: newNodesB, template: template)
         
         childA.recalculateSubtreeSizes()
         childB.recalculateSubtreeSizes()
@@ -159,15 +159,15 @@ public struct LivingTreeGenome<GeneType: TreeGeneType>: Genome {
         }
     }
     
-    public func copy() -> LivingTreeGenome {
-        return LivingTreeGenome(nodes: nodes, template: template)
+    public func copy() -> TreeGenome {
+        return TreeGenome(nodes: nodes, template: template)
     }
     
     // MARK: - Genesis
     
     /// Returns a random, recursively built tree subject to certain constraints.
-    public static func random(depth: Int, template: TreeGeneTemplate<GeneType>, environment: Environment) throws -> LivingTreeGenome {
-        var genome = LivingTreeGenome(nodes: [], template: template)
+    public static func random(depth: Int, template: TreeGeneTemplate<GeneType>, environment: Environment) throws -> TreeGenome {
+        var genome = TreeGenome(nodes: [], template: template)
         genome.nodes = try genome.generateRandomSubtree(depth: depth, environment: environment)
         genome.recalculateSubtreeSizes()
         return genome
@@ -182,7 +182,7 @@ public struct LivingTreeGenome<GeneType: TreeGeneType>: Genome {
     }
 }
 
-extension LivingTreeGenome: RawRepresentable {
+extension TreeGenome: RawRepresentable {
     public typealias RawValue = [Node]
     public var rawValue: RawValue { return nodes }
     public init?(rawValue: RawValue) {
@@ -192,6 +192,6 @@ extension LivingTreeGenome: RawRepresentable {
     }
 }
 
-extension LivingTreeGenome: Gene {
-    public typealias Environment = LivingTreeEnvironment
+extension TreeGenome: Gene {
+    public typealias Environment = TreeEnvironment
 }

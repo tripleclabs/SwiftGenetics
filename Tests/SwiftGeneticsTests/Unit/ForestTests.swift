@@ -1,7 +1,7 @@
 import XCTest
 import SwiftGenetics
 
-final class LivingForestTests: XCTestCase {
+final class ForestTests: XCTestCase {
     
     enum MockGeneType: Int, TreeGeneType {
         case terminal, unary, binary
@@ -17,22 +17,22 @@ final class LivingForestTests: XCTestCase {
         static var leafTypes: [MockGeneType] { [.terminal] }
     }
     
-    func testLivingForestGenomeInitialization() {
+    func testForestGenomeInitialization() {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
-        let tree1 = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
-        let tree2 = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
+        let tree1 = TreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
+        let tree2 = TreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
         
-        let forest = LivingForestGenome(trees: [tree1, tree2])
+        let forest = ForestGenome(trees: [tree1, tree2])
         XCTAssertEqual(forest.trees.count, 2)
         XCTAssertEqual(forest.trees[0].nodes.count, 1)
     }
     
     func testLivingForestMutation() throws {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
-        let tree = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
-        var forest = LivingForestGenome(trees: [tree])
+        let tree = TreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
+        var forest = ForestGenome(trees: [tree])
         
-        let env = LivingTreeEnvironment(
+        let env = TreeEnvironment(
             populationSize: 10,
             selectionMethod: .roulette,
             selectableProportion: 1.0,
@@ -52,13 +52,13 @@ final class LivingForestTests: XCTestCase {
     
     func testLivingForestCrossover() throws {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
-        let tree1 = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
-        let tree2 = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
+        let tree1 = TreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
+        let tree2 = TreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
         
-        let forest1 = LivingForestGenome(trees: [tree1])
-        let forest2 = LivingForestGenome(trees: [tree2])
+        let forest1 = ForestGenome(trees: [tree1])
+        let forest2 = ForestGenome(trees: [tree2])
         
-        let env = LivingTreeEnvironment(
+        let env = TreeEnvironment(
             populationSize: 10,
             selectionMethod: .roulette,
             selectableProportion: 1.0,
@@ -79,8 +79,8 @@ final class LivingForestTests: XCTestCase {
     
     func testLivingForestCopy() {
         let template = TreeGeneTemplate<MockGeneType>(binaryTypes: [.binary], unaryTypes: [.unary], leafTypes: [.terminal])
-        let tree = LivingTreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
-        let forest = LivingForestGenome(trees: [tree])
+        let tree = TreeGenome<MockGeneType>(nodes: [FlatTreeNode(geneType: .terminal)], template: template)
+        let forest = ForestGenome(trees: [tree])
         let copy = forest.copy()
         
         XCTAssertEqual(copy.trees.count, 1)
@@ -88,7 +88,7 @@ final class LivingForestTests: XCTestCase {
     }
 
     static let allTests = [
-        ("testLivingForestGenomeInitialization", testLivingForestGenomeInitialization),
+        ("testForestGenomeInitialization", testForestGenomeInitialization),
         ("testLivingForestMutation", testLivingForestMutation),
         ("testLivingForestCrossover", testLivingForestCrossover),
         ("testLivingForestCopy", testLivingForestCopy),
