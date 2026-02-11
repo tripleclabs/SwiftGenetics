@@ -27,10 +27,7 @@ let package = Package(
         .target(
             name: "SwiftGenetics",
             dependencies: [],
-			path: "Sources",
-            swiftSettings: [
-                .enableUpcomingFeature("StrictConcurrency")
-            ]
+			path: "Sources"
         ),
         .testTarget(
             name: "SwiftGeneticsTests",
