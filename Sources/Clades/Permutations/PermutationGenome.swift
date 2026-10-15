@@ -51,7 +51,10 @@ public struct PermutationGenome<T: Codable & Hashable & Sendable>: Genome, Senda
             
             // 1. Copy a slice from Parent 1
             var child = Array<T?>(repeating: nil, count: size)
-            let slice = parent1[p1...p2]
+            // O(1) expected membership checks instead of scanning the copied
+            // segment for each candidate. Never iterate this set: parent order
+            // and random-source consumption remain exactly the same as OX1.
+            let copiedElements = Set(parent1[p1...p2])
             for i in p1...p2 {
                 child[i] = parent1[i]
             }
@@ -62,7 +65,7 @@ public struct PermutationGenome<T: Codable & Hashable & Sendable>: Genome, Senda
             
             while currentChildIndex != p1 {
                 let candidate = parent2[currentP2Index]
-                if !slice.contains(candidate) {
+                if !copiedElements.contains(candidate) {
                     child[currentChildIndex] = candidate
                     currentChildIndex = (currentChildIndex + 1) % size
                 }
