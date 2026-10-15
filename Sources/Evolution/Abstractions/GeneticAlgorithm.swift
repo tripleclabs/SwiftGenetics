@@ -28,16 +28,18 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
     }
     
     public func evolve(population: inout Population<Eval.G>, configuration: EvolutionAlgorithmConfiguration) async throws {
+        try Task.checkCancellation()
         // CORRECTION: Ensure Generation 0 is evaluated before the loop begins.
         // Otherwise, the first selection step is random.
         if !population.organisms.isEmpty {
             let needsEval = population.organisms.contains { $0.fitness == nil && $0.objectives == nil }
             if needsEval {
-                await evaluatePopulation(&population, threads: configuration.parallelEvaluationThreads)
+                try await evaluatePopulation(&population, threads: configuration.parallelEvaluationThreads)
             }
         }
         
         for i in 0..<configuration.maxEpochs {
+            try Task.checkCancellation()
             // Log start of epoch.
             loggingDelegate.evolutionStartingEpoch(i)
             let startDate = Date()
@@ -47,26 +49,31 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
             try await population.epoch()
             
             // Re-evaluate the new population (or the expanded population for NSGA-II).
-            await evaluatePopulation(&population, threads: configuration.parallelEvaluationThreads)
+            try await evaluatePopulation(&population, threads: configuration.parallelEvaluationThreads)
             
+            try Task.checkCancellation()
             // If NSGA-II, perform survival selection (truncation back to N) after evaluation.
             if population.evolutionType == .nsga2 {
                 population.truncateNSGA2()
             }
             
+            try Task.checkCancellation()
             // Print epoch statistics.
             let elapsedInterval = Date().timeIntervalSince(startDate)
             loggingDelegate.evolutionFinishedEpoch(i, duration: elapsedInterval, population: population)
             
             // Execute epoch finished functions.
             for fn in afterEachEpochFns {
+                try Task.checkCancellation()
                 await fn(i)
             }
         }
+        try Task.checkCancellation()
     }
     
     /// Concurrently evaluates the fitness or objectives of the population using task chunking.
-    private func evaluatePopulation(_ population: inout Population<Eval.G>, threads: Int?) async {
+    private func evaluatePopulation(_ population: inout Population<Eval.G>, threads: Int?) async throws {
+        try Task.checkCancellation()
         let organisms = population.organisms
         let evolutionType = population.evolutionType
         let evaluator = self.fitnessEvaluator
@@ -76,10 +83,10 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
         // Instead of one task per organism, we split the work across the number of active processors.
         // This reduces task scheduling overhead for large populations.
         let totalCount = organisms.count
-        let processorCount = threads ?? ProcessInfo.processInfo.activeProcessorCount
+        let processorCount = max(1, threads ?? ProcessInfo.processInfo.activeProcessorCount)
         let chunkSize = max(1, Int(ceil(Double(totalCount) / Double(processorCount))))
         
-        await withTaskGroup(of: [(Int, Double?, [Double]?)].self) { group in
+        try await withThrowingTaskGroup(of: [(Int, Double?, [Double]?)].self) { group in
             for startIndex in stride(from: 0, to: totalCount, by: chunkSize) {
                 let endIndex = min(startIndex + chunkSize, totalCount)
                 let organismSlice = Array(organisms[startIndex..<endIndex])
@@ -89,6 +96,7 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
                     chunkResults.reserveCapacity(organismSlice.count)
                     
                     for (offset, organism) in organismSlice.enumerated() {
+                        try Task.checkCancellation()
                         let originalIndex = startIndex + offset
                         
                         // Skip if already evaluated in the current population object
@@ -113,14 +121,20 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
                         do {
                             if evolutionType == .nsga2 {
                                 let objectives = try await evaluator.objectivesFor(organism: organism)
+                                try Task.checkCancellation()
                                 await cache.setObjectives(objectives, for: organism.genotype)
                                 chunkResults.append((originalIndex, objectives.first, objectives))
                             } else {
                                 let fit = try await evaluator.fitnessFor(organism: organism)
+                                try Task.checkCancellation()
                                 await cache.setFitness(fit, for: organism.genotype)
                                 chunkResults.append((originalIndex, fit, nil))
                             }
+                        } catch is CancellationError {
+                            throw CancellationError()
                         } catch {
+                            // Evaluators may translate cancellation into their own error.
+                            try Task.checkCancellation()
                             print("Error evaluating fitness for organism \(originalIndex): \(error)")
                             chunkResults.append((originalIndex, 0.0, nil))
                         }
@@ -129,7 +143,8 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
                 }
             }
             
-            for await chunkResults in group {
+            for try await chunkResults in group {
+                try Task.checkCancellation()
                 for (index, fitness, objectives) in chunkResults {
                     if let fitness = fitness {
                         population.organisms[index].fitness = fitness
@@ -142,6 +157,7 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
             }
         }
         
+        try Task.checkCancellation()
         // Update statistics after evaluation so that the next epoch or logging has correct data.
         population.updateFitnessMetrics()
     }

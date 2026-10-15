@@ -76,6 +76,7 @@ public struct Population<G: Genome>: Codable, Sendable, Equatable {
 	
 	/// Performs an evolutionary epoch.
 	mutating public func epoch() async throws {
+        try Task.checkCancellation()
 		// Get this generation's population.
 		switch evolutionType {
 		case .standard:
@@ -129,6 +130,7 @@ public struct Population<G: Genome>: Codable, Sendable, Equatable {
         let progeny: [Organism<G>] = try await withThrowingTaskGroup(of: (Int, [Organism<G>]).self) { group in
             for (index, mating) in matings.enumerated() {
                 group.addTask {
+                    try Task.checkCancellation()
                     let progenitorA = mating.0
                     let progenitorB = mating.1
                     
@@ -142,6 +144,7 @@ public struct Population<G: Genome>: Codable, Sendable, Equatable {
                     let crossoverRate = rateA ?? rateB ?? taskEnvironment.crossoverRate
                     var (progenyGenomeA, progenyGenomeB) = try progenitorA.genotype.crossover(with: progenitorB.genotype, rate: crossoverRate, environment: taskEnvironment)
                     
+                    try Task.checkCancellation()
                     // Perform mutation.
                     let mutationRateA = progenyGenomeA.individualMutationRate ?? taskEnvironment.mutationRate
                     try progenyGenomeA.mutate(rate: mutationRateA, environment: taskEnvironment)
