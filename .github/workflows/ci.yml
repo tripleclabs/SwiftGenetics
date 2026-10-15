@@ -2,34 +2,26 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
 
 jobs:
   build:
-    name: Build (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
+    name: Linux (Swift 6.4)
+    runs-on: ubuntu-latest
+    # Match platform and MicroSQL: setup-swift cannot install 6.4 yet.
+    # Restore hosted macOS coverage when that toolchain is available.
+    container: wearecococo/swift:6.4
     steps:
+      - name: Install git
+        run: apt-get update && apt-get install -y --no-install-recommends git
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Swift
-        uses: swift-actions/setup-swift@v2
         with:
-          swift-version: "6.4"
-
+          persist-credentials: false
       - name: Show Swift version
         run: swift --version
-
       - name: Build
-        run: swift build -v
-
+        run: swift build
       - name: Test
         run: swift test
