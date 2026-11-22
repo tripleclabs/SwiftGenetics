@@ -23,12 +23,12 @@ public struct LivingStringGenome<GeneType: Gene>: Genome where GeneType.Environm
 		self.genes = genes
 	}
 	
+	@inlinable
 	mutating public func mutate(rate: Double, environment: Environment) throws {
-		for i in 0..<genes.count {
-			try genes[i].mutate(rate: rate, environment: environment)
-		}
+		try RealGene.mutateGenes(&genes, rate: rate, environment: environment)
 	}
 	
+	@inlinable
 	public func crossover(with partner: LivingStringGenome, rate: Double, environment: Environment) throws -> (LivingStringGenome, LivingStringGenome) {
 		guard environment.randomSource.randomDouble() < rate else { return (self, partner) }
 		guard partner.genes.count > 1 && self.genes.count > 1 else { return (self, partner) }
@@ -65,12 +65,14 @@ extension LivingStringGenome: RawRepresentable where RealGene: Hashable {
 }
 
 extension LivingStringGenome: Equatable where GeneType: Equatable {
+	@inlinable
 	public static func == (lhs: LivingStringGenome<GeneType>, rhs: LivingStringGenome<GeneType>) -> Bool {
 		return lhs.genes == rhs.genes
 	}
 }
 
 extension LivingStringGenome: Hashable where GeneType: Hashable {
+	@inlinable
 	public func hash(into hasher: inout Hasher) {
 		hasher.combine(genes)
 	}

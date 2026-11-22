@@ -40,16 +40,40 @@ public struct TreeGeneTemplate<T: TreeGeneType>: Codable, Sendable {
 	/// Sampling array for leaf gene types.
 	let leafTypes: [T]
 	
-	/// A sampling array for non-leaf types.
-	var nonLeafTypes: [T] { return binaryTypes + unaryTypes }
-	/// A sampling array for all types.
-	var allTypes: [T] { return nonLeafTypes + leafTypes }
+	/// Precomputed sampling array for non-leaf types.
+	let nonLeafTypes: [T]
+	/// Precomputed sampling array for all types.
+	let allTypes: [T]
+	
+	enum CodingKeys: String, CodingKey {
+		case binaryTypes
+		case unaryTypes
+		case leafTypes
+	}
 	
 	/// Creates a new template.
 	public init(binaryTypes: [T], unaryTypes: [T], leafTypes: [T]) {
 		self.binaryTypes = binaryTypes
 		self.unaryTypes = unaryTypes
 		self.leafTypes = leafTypes
+		let nonLeaf = binaryTypes + unaryTypes
+		self.nonLeafTypes = nonLeaf
+		self.allTypes = nonLeaf + leafTypes
+	}
+	
+	public init(from decoder: Decoder) throws {
+		let container = try decoder.container(keyedBy: CodingKeys.self)
+		let binaryTypes = try container.decode([T].self, forKey: .binaryTypes)
+		let unaryTypes = try container.decode([T].self, forKey: .unaryTypes)
+		let leafTypes = try container.decode([T].self, forKey: .leafTypes)
+		self.init(binaryTypes: binaryTypes, unaryTypes: unaryTypes, leafTypes: leafTypes)
+	}
+	
+	public func encode(to encoder: Encoder) throws {
+		var container = encoder.container(keyedBy: CodingKeys.self)
+		try container.encode(binaryTypes, forKey: .binaryTypes)
+		try container.encode(unaryTypes, forKey: .unaryTypes)
+		try container.encode(leafTypes, forKey: .leafTypes)
 	}
 }
 

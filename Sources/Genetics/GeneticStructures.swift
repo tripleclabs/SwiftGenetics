@@ -18,7 +18,19 @@ public protocol GeneticEnvironmentAssociable {
 }
 
 /// An individual genetic element.
-public protocol Gene: Mutatable, Codable, Sendable, Hashable { }
+public protocol Gene: Mutatable, Codable, Sendable, Hashable {
+    /// Mutates a slice/array of genes in batch. Types can override this to hoist
+    /// environment parameter lookups and amortize RNG lock acquisitions across a genome.
+    static func mutateGenes(_ genes: inout [Self], rate: Double, environment: Environment) throws
+}
+
+extension Gene {
+    public static func mutateGenes(_ genes: inout [Self], rate: Double, environment: Environment) throws {
+        for i in 0..<genes.count {
+            try genes[i].mutate(rate: rate, environment: environment)
+        }
+    }
+}
 
 /// A collection of genes.
 public protocol Genome: Mutatable, Crossoverable, Codable, Sendable, Hashable {
@@ -49,7 +61,7 @@ public struct Organism<G: Genome>: Codable, Sendable, Identifiable {
     // MARK: - Multi-Objective Metadata (NSGA-II)
     
     /// This organism's objective fitness values, or `nil` if unknown.
-    /// Lower values are assumed to be better (minimization), or as defined by the problem.
+    /// Higher values are assumed to be better (maximization) in NSGA-II.
     public var objectives: [Double]?
     /// The dominance rank (front index) in NSGA-II.
     public var dominanceRank: Int = 0
@@ -71,8 +83,20 @@ public struct Organism<G: Genome>: Codable, Sendable, Identifiable {
 // Allows organisms to be compared by their fitnesses.
 extension Organism: Comparable {
     public static func < (lhs: Organism<G>, rhs: Organism<G>) -> Bool {
-        guard let lFit = lhs.fitness, let rFit = rhs.fitness else { return false }
-        return lFit < rFit
+        // Establish a strict weak ordering: `nil` and `NaN` sort lowest so
+        // unevaluated or invalid organisms never outrank evaluated ones or break `Array.sort()`.
+        let lValid = lhs.fitness.flatMap { $0.isNaN ? nil : $0 }
+        let rValid = rhs.fitness.flatMap { $0.isNaN ? nil : $0 }
+        switch (lValid, rValid) {
+        case (nil, nil):
+            return false
+        case (nil, .some):
+            return true
+        case (.some, nil):
+            return false
+        case let (.some(l), .some(r)):
+            return l < r
+        }
     }
     
     public static func == (lhs: Organism<G>, rhs: Organism<G>) -> Bool {

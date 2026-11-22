@@ -95,48 +95,86 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
                     var chunkResults = [(Int, Double?, [Double]?)]()
                     chunkResults.reserveCapacity(organismSlice.count)
                     
+                    // Collect organisms in this chunk that need evaluation.
+                    var pendingIndices = [Int]()
+                    var pendingOrganisms = [Organism<Eval.G>]()
+                    var pendingGenomes = [Eval.G]()
+                    pendingIndices.reserveCapacity(organismSlice.count)
+                    pendingOrganisms.reserveCapacity(organismSlice.count)
+                    pendingGenomes.reserveCapacity(organismSlice.count)
+                    
                     for (offset, organism) in organismSlice.enumerated() {
                         try Task.checkCancellation()
-                        let originalIndex = startIndex + offset
-                        
-                        // Skip if already evaluated in the current population object
                         if (evolutionType == .standard && organism.fitness != nil) ||
                            (evolutionType == .nsga2 && organism.objectives != nil) {
                             continue
                         }
+                        pendingIndices.append(startIndex + offset)
+                        pendingOrganisms.append(organism)
+                        pendingGenomes.append(organism.genotype)
+                    }
+                    
+                    guard !pendingOrganisms.isEmpty else {
+                        return chunkResults
+                    }
+                    
+                    if evolutionType == .nsga2 {
+                        // Single batched lock acquisition to check cache for the entire chunk.
+                        let cachedList = cache.objectivesList(for: pendingGenomes)
+                        var newCacheEntries = [(Eval.G, [Double])]()
                         
-                        // Check cache first
-                        if evolutionType == .nsga2 {
-                            if let cached = await cache.objectives(for: organism.genotype) {
+                        for i in 0..<pendingOrganisms.count {
+                            try Task.checkCancellation()
+                            let originalIndex = pendingIndices[i]
+                            if let cached = cachedList[i] {
                                 chunkResults.append((originalIndex, cached.first, cached))
                                 continue
                             }
-                        } else {
-                            if let cached = await cache.fitness(for: organism.genotype) {
-                                chunkResults.append((originalIndex, cached, nil))
-                                continue
+                            do {
+                                let objectives = try await evaluator.objectivesFor(organism: pendingOrganisms[i])
+                                try Task.checkCancellation()
+                                newCacheEntries.append((pendingGenomes[i], objectives))
+                                chunkResults.append((originalIndex, objectives.first, objectives))
+                            } catch is CancellationError {
+                                throw CancellationError()
+                            } catch {
+                                try Task.checkCancellation()
+                                print("Error evaluating fitness for organism \(originalIndex): \(error)")
+                                chunkResults.append((originalIndex, 0.0, nil))
                             }
                         }
                         
-                        do {
-                            if evolutionType == .nsga2 {
-                                let objectives = try await evaluator.objectivesFor(organism: organism)
-                                try Task.checkCancellation()
-                                await cache.setObjectives(objectives, for: organism.genotype)
-                                chunkResults.append((originalIndex, objectives.first, objectives))
-                            } else {
-                                let fit = try await evaluator.fitnessFor(organism: organism)
-                                try Task.checkCancellation()
-                                await cache.setFitness(fit, for: organism.genotype)
-                                chunkResults.append((originalIndex, fit, nil))
-                            }
-                        } catch is CancellationError {
-                            throw CancellationError()
-                        } catch {
-                            // Evaluators may translate cancellation into their own error.
+                        if !newCacheEntries.isEmpty {
+                            cache.setObjectivesList(newCacheEntries)
+                        }
+                    } else {
+                        // Single batched lock acquisition to check cache for the entire chunk.
+                        let cachedList = cache.fitnesses(for: pendingGenomes)
+                        var newCacheEntries = [(Eval.G, Double)]()
+                        
+                        for i in 0..<pendingOrganisms.count {
                             try Task.checkCancellation()
-                            print("Error evaluating fitness for organism \(originalIndex): \(error)")
-                            chunkResults.append((originalIndex, 0.0, nil))
+                            let originalIndex = pendingIndices[i]
+                            if let cached = cachedList[i] {
+                                chunkResults.append((originalIndex, cached, nil))
+                                continue
+                            }
+                            do {
+                                let fit = try await evaluator.fitnessFor(organism: pendingOrganisms[i])
+                                try Task.checkCancellation()
+                                newCacheEntries.append((pendingGenomes[i], fit))
+                                chunkResults.append((originalIndex, fit, nil))
+                            } catch is CancellationError {
+                                throw CancellationError()
+                            } catch {
+                                try Task.checkCancellation()
+                                print("Error evaluating fitness for organism \(originalIndex): \(error)")
+                                chunkResults.append((originalIndex, 0.0, nil))
+                            }
+                        }
+                        
+                        if !newCacheEntries.isEmpty {
+                            cache.setFitnesses(newCacheEntries)
                         }
                     }
                     return chunkResults

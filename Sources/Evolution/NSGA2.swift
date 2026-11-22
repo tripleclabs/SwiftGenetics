@@ -16,17 +16,20 @@ public struct NSGA2 {
     ///   - organisms: The population to sort and rank.
     ///   - n: The number of organisms to keep (the desired population size).
     /// - Returns: A sorted and ranked array of organisms, truncated to size `n`.
+    @inlinable
     public static func sortAndTruncate<G: Genome>(_ organisms: [Organism<G>], to n: Int) -> [Organism<G>] {
+        guard !organisms.isEmpty, n > 0 else { return [] }
         let population = organisms
         
         // 1. Fast non-dominated sort
         let fronts = fastNonDominatedSort(population)
         
         var newPopulation = [Organism<G>]()
+        newPopulation.reserveCapacity(min(n, population.count))
         var currentFrontIndex = 0
         
         // 2. Fill the new population front by front
-        while newPopulation.count + fronts[currentFrontIndex].count <= n {
+        while currentFrontIndex < fronts.count && newPopulation.count + fronts[currentFrontIndex].count <= n {
             var front = fronts[currentFrontIndex].map { population[$0] }
             
             // Assign crowding distance to the front
@@ -39,7 +42,6 @@ public struct NSGA2 {
             
             newPopulation.append(contentsOf: front)
             currentFrontIndex += 1
-            if currentFrontIndex >= fronts.count { break }
         }
         
         // 3. Fill the remaining slots from the last front using crowding distance
@@ -62,24 +64,78 @@ public struct NSGA2 {
     
     /// Performs a fast non-dominated sort on the given population.
     /// Returns indices of organisms grouped by their Pareto fronts.
+    @inlinable
     public static func fastNonDominatedSort<G: Genome>(_ population: [Organism<G>]) -> [[Int]] {
         let size = population.count
+        guard size > 0 else { return [] }
+        
         var S = Array(repeating: [Int](), count: size) // Sets of organisms dominated by each individual
-        var n = Array(repeating: 0, count: size)      // Number of individuals dominating each individual
+        var n = [Int](repeating: 0, count: size)       // Number of individuals dominating each individual
         var fronts = [[Int]]()
         var currentFront = [Int]()
         
-        for p in 0..<size {
-            for q in 0..<size {
-                if p == q { continue }
-                
-                if dominates(population[p], population[q]) {
-                    S[p].append(q)
-                } else if dominates(population[q], population[p]) {
-                    n[p] += 1
+        // Fast path: hoist uniform-length objective arrays into a single contiguous buffer
+        // and evaluate each unordered pair (p, q) once.
+        let objectiveCount = population[0].objectives?.count ?? 0
+        var uniformObjectives = objectiveCount > 0
+        if uniformObjectives {
+            for p in 1..<size {
+                if population[p].objectives?.count != objectiveCount {
+                    uniformObjectives = false
+                    break
                 }
             }
-            
+        }
+        
+        if uniformObjectives {
+            var flatObjectives = [Double]()
+            flatObjectives.reserveCapacity(size * objectiveCount)
+            for organism in population {
+                flatObjectives.append(contentsOf: organism.objectives!)
+            }
+            flatObjectives.withUnsafeBufferPointer { buf in
+                for p in 0..<size {
+                    let pBase = p * objectiveCount
+                    for q in (p + 1)..<size {
+                        let qBase = q * objectiveCount
+                        var pBetter = false
+                        var qBetter = false
+                        for k in 0..<objectiveCount {
+                            let pv = buf[pBase + k]
+                            let qv = buf[qBase + k]
+                            if pv > qv {
+                                pBetter = true
+                                if qBetter { break }
+                            } else if qv > pv {
+                                qBetter = true
+                                if pBetter { break }
+                            }
+                        }
+                        if pBetter && !qBetter {
+                            S[p].append(q)
+                            n[q] += 1
+                        } else if qBetter && !pBetter {
+                            S[q].append(p)
+                            n[p] += 1
+                        }
+                    }
+                }
+            }
+        } else {
+            for p in 0..<size {
+                for q in (p + 1)..<size {
+                    if dominates(population[p], population[q]) {
+                        S[p].append(q)
+                        n[q] += 1
+                    } else if dominates(population[q], population[p]) {
+                        S[q].append(p)
+                        n[p] += 1
+                    }
+                }
+            }
+        }
+        
+        for p in 0..<size {
             if n[p] == 0 {
                 currentFront.append(p)
             }
@@ -111,6 +167,7 @@ public struct NSGA2 {
     }
     
     /// Calculates and assigns crowding distances to a front of organisms.
+    @inlinable
     public static func assignCrowdingDistance<G: Genome>(_ front: inout [Organism<G>]) {
         guard !front.isEmpty else { return }
         let size = front.count
@@ -122,24 +179,39 @@ public struct NSGA2 {
         
         guard let firstObjectives = front.first?.objectives else { return }
         let numObjectives = firstObjectives.count
+        guard numObjectives > 0 else { return }
+        
+        if size <= 2 {
+            for i in 0..<size {
+                front[i].crowdingDistance = Double.infinity
+            }
+            return
+        }
+        
+        var indices = Array(0..<size)
+        var objValues = [Double](repeating: 0.0, count: size)
         
         for m in 0..<numObjectives {
-            // Sort by objective m
-            front.sort { ($0.objectives?[m] ?? 0.0) < ($1.objectives?[m] ?? 0.0) }
+            for i in 0..<size {
+                objValues[i] = front[i].objectives?[m] ?? 0.0
+            }
+            
+            // Sort indices by objective m without copying Organism structs
+            indices.sort { objValues[$0] < objValues[$1] }
             
             // Boundary points get infinite distance
-            front[0].crowdingDistance = Double.infinity
-            front[size - 1].crowdingDistance = Double.infinity
+            front[indices[0]].crowdingDistance = Double.infinity
+            front[indices[size - 1]].crowdingDistance = Double.infinity
             
-            let minVal = front[0].objectives?[m] ?? 0.0
-            let maxVal = front[size - 1].objectives?[m] ?? 0.0
+            let minVal = objValues[indices[0]]
+            let maxVal = objValues[indices[size - 1]]
             let range = maxVal - minVal
             
             if range > 0 {
                 for i in 1..<(size - 1) {
-                    let nextVal = front[i+1].objectives?[m] ?? 0.0
-                    let prevVal = front[i-1].objectives?[m] ?? 0.0
-                    front[i].crowdingDistance += (nextVal - prevVal) / range
+                    let nextVal = objValues[indices[i + 1]]
+                    let prevVal = objValues[indices[i - 1]]
+                    front[indices[i]].crowdingDistance += (nextVal - prevVal) / range
                 }
             }
         }
@@ -148,6 +220,7 @@ public struct NSGA2 {
     /// Returns true if $p$ dominates $q$.
     /// Definition: $p$ is no worse than $q$ in all objectives, and strictly better in at least one.
     /// This implementation assumes MAXIMIZATION (larger is better).
+    @inlinable
     public static func dominates<G: Genome>(_ p: Organism<G>, _ q: Organism<G>) -> Bool {
         guard let pObj = p.objectives, let qObj = q.objectives, pObj.count == qObj.count else {
             return (p.fitness ?? 0.0) > (q.fitness ?? 0.0) // Fallback to single fitness

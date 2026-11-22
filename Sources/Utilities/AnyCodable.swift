@@ -69,15 +69,43 @@ public struct AnyCodable: Codable, @unchecked Sendable {
 
 extension AnyCodable: Equatable {
     public static func == (lhs: AnyCodable, rhs: AnyCodable) -> Bool {
-        // This is a simple way to compare type-erased Codable values.
-        // For dictionaries, ordering might be an issue with raw Data comparison,
-        // but for these tests it should be sufficient or better than the raw test check.
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .sortedKeys
-        guard let lhsData = try? encoder.encode(lhs),
-              let rhsData = try? encoder.encode(rhs) else {
+        switch (lhs.value, rhs.value) {
+        case let (l as Bool, r as Bool):
+            return l == r
+        case let (l as String, r as String):
+            return l == r
+        case let (l as Int, r as Int):
+            return l == r
+        case let (l as Double, r as Double):
+            return l == r
+        case let (l as Float, r as Float):
+            return l == r
+        case let (l as Int, r as Double):
+            return Double(l) == r
+        case let (l as Double, r as Int):
+            return l == Double(r)
+        case let (l as Int, r as Float):
+            return Float(l) == r
+        case let (l as Float, r as Int):
+            return l == Float(r)
+        case let (l as Float, r as Double):
+            return Double(l) == r
+        case let (l as Double, r as Float):
+            return l == Double(r)
+        case let (l as [Any], r as [Any]):
+            guard l.count == r.count else { return false }
+            for i in 0..<l.count {
+                if AnyCodable(l[i]) != AnyCodable(r[i]) { return false }
+            }
+            return true
+        case let (l as [String: Any], r as [String: Any]):
+            guard l.count == r.count else { return false }
+            for (k, lv) in l {
+                guard let rv = r[k], AnyCodable(lv) == AnyCodable(rv) else { return false }
+            }
+            return true
+        default:
             return false
         }
-        return lhsData == rhsData
     }
 }

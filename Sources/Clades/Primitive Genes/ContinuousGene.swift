@@ -38,30 +38,56 @@ public struct ContinuousGene<R: FloatingPoint & Hashable & Sendable, E: GeneticE
 		self.value = value
 	}
 	
+	@inlinable
 	mutating public func mutate(rate: Double, environment: ContinuousGene<R, E>.Environment) throws {
-		guard environment.randomSource.randomDouble() < rate else { return }
-		
-		// Get environmental mutation parameters.
+		let (mutationSize, mutationType) = Self.resolveMutationParameters(from: environment)
+		try environment.randomSource.withGenerator { rng in
+			guard Double.random(in: 0..<1, using: &rng) < rate else { return }
+			try mutateValue(mutationSize: mutationSize, mutationType: mutationType, using: &rng)
+		}
+	}
+	
+	@inlinable
+	public static func mutateGenes(_ genes: inout [Self], rate: Double, environment: ContinuousGene<R, E>.Environment) throws {
+		guard !genes.isEmpty else { return }
+		// Hoist dictionary parameter lookups and RNG lock acquisition out of the per-gene loop.
+		let (mutationSize, mutationType) = resolveMutationParameters(from: environment)
+		try environment.randomSource.withGenerator { rng in
+			for i in 0..<genes.count {
+				if Double.random(in: 0..<1, using: &rng) < rate {
+					try genes[i].mutateValue(mutationSize: mutationSize, mutationType: mutationType, using: &rng)
+				}
+			}
+		}
+	}
+	
+	@inlinable
+	internal static func resolveMutationParameters(from environment: E) -> (Double, ContinuousMutationType) {
 		let mutationSize = (environment.parameters[Param.mutationSize.rawValue]?.value as? Double) ?? 0.1
 		let mutationType: ContinuousMutationType
-		if let rawMutationType = environment.parameters[Param.mutationType.rawValue]?.value as? String, let type = ContinuousMutationType(rawValue: rawMutationType) {
+		if let rawMutationType = environment.parameters[Param.mutationType.rawValue]?.value as? String,
+		   let type = ContinuousMutationType(rawValue: rawMutationType) {
 			mutationType = type
 		} else {
 			mutationType = .uniform
 		}
-		
-		// Perform the appropriate mutation.
+		return (mutationSize, mutationType)
+	}
+	
+	@inlinable
+	internal mutating func mutateValue(mutationSize: Double, mutationType: ContinuousMutationType, using rng: inout Xoshiro256PlusPlus) throws {
 		switch mutationType {
 		case .uniform:
-			value += try ContinuousGene.genericize(environment.randomSource.randomDouble(in: (-mutationSize)...mutationSize))
+			value += try ContinuousGene.genericize(Double.random(in: (-mutationSize)...mutationSize, using: &rng))
 		case .gaussian:
-			value += try ContinuousGene.genericize(environment.randomSource.randomGaussian(mu: 0.0, sigma: mutationSize))
+			value += try ContinuousGene.genericize(RandomSource.sampleGaussian(mu: 0.0, sigma: mutationSize, using: &rng))
 		}
 	}
 	
 	/// Converts the input `Double` into the gene's generic floating-point type.
 	/// This is slightly ugly, but I can't think of a cleaner way to do this.
-	private static func genericize(_ num: Double) throws -> R {
+	@inlinable
+	internal static func genericize(_ num: Double) throws -> R {
 		switch R.self {
 		case is Float.Type:
 			return Float(num) as! R
@@ -78,10 +104,12 @@ public struct ContinuousGene<R: FloatingPoint & Hashable & Sendable, E: GeneticE
 	
 	// MARK: - Comparability.
 	
+	@inlinable
 	public static func == (lhs: ContinuousGene, rhs: ContinuousGene) -> Bool {
 		return lhs.value == rhs.value // TODO: maybe this could cause issues, bad to compare IEEE float equality...
 	}
 
+	@inlinable
 	public func hash(into hasher: inout Hasher) {
 		hasher.combine(value)
 	}

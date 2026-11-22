@@ -7,6 +7,8 @@
 //  Copyright © 2026 Triple C Labs GmbH. All rights reserved.
 //
 
+import Foundation
+
 /// Defines broad types of genetic algorithms.
 public enum EvolutionAlgorithmType: String, Codable, Sendable {
 	/// A standard, single-objective genetic algorithm.
@@ -107,69 +109,109 @@ public struct Population<G: Genome>: Codable, Sendable, Equatable {
 			guard environment.selectableProportion == 1.0 else {
                 throw GeneticError.unimplemented("Roulette sampling with selectableProportion != 1.0 is not yet supported.")
             }
-			parents = try (0..<numberOfParents).map { _ in try organismFromRoulette() }
+			parents = try organismsFromRoulette(count: numberOfParents)
 		case let .tournament(size: size):
-			parents = try (0..<numberOfParents).map { _ in try organismFromTournament(size: size) }
+			parents = try organismsFromTournament(size: size, count: numberOfParents)
 		case let .truncation(takePortion: portion):
-			while parents.count < numberOfParents {
-				parents += organisms.suffix(Int(Double(organisms.count) * portion * environment.selectableProportion)).suffix(numberOfParents) // NOTE: the truncation's `takePortion` stacks on top of the environment's `selectableProportion`.
+			guard !organisms.isEmpty else {
+				throw GeneticError.evolutionFailed("Cannot sample from an empty population.")
 			}
-			parents = parents.suffix(numberOfParents)
+			let takeCount = Int(Double(organisms.count) * portion * environment.selectableProportion)
+			guard takeCount > 0 else {
+				throw GeneticError.configurationError("Truncation portion (\(portion)) and selectableProportion (\(environment.selectableProportion)) resulted in 0 selectable organisms.")
+			}
+			let topOrganisms = organisms.suffix(takeCount)
+			parents.reserveCapacity(numberOfParents)
+			while parents.count < numberOfParents {
+				let remaining = numberOfParents - parents.count
+				if remaining >= topOrganisms.count {
+					parents.append(contentsOf: topOrganisms)
+				} else {
+					parents.append(contentsOf: topOrganisms.suffix(remaining))
+				}
+			}
         case .nsga2:
             // Use Crowded Tournament Selection for NSGA-II
-            parents = try (0..<numberOfParents).map { _ in try organismFromCrowdedTournament() }
+            parents = try organismsFromCrowdedTournament(count: numberOfParents)
 		}
 		assert(parents.count == numberOfParents)
 		
 		// Reproduce until the population is the desired size.
-		let matings: [(Organism<G>, Organism<G>)] = (0..<parents.count/2).map { (parents[$0*2], parents[$0*2+1]) }
-        let currentGeneration = generation
-        let currentEnvironment = environment
-        
-        // Parallelize Reproduction (Crossover and Mutation)
-        let progeny: [Organism<G>] = try await withThrowingTaskGroup(of: (Int, [Organism<G>]).self) { group in
-            for (index, mating) in matings.enumerated() {
-                group.addTask {
-                    try Task.checkCancellation()
-                    let progenitorA = mating.0
-                    let progenitorB = mating.1
-                    
-                    // Fork the environment to ensure deterministic randomness in this parallel task.
-                    var taskEnvironment = currentEnvironment
-                    taskEnvironment.randomSource = currentEnvironment.randomSource.fork(index: index)
-                    
-                    // Perform crossover.
-                    let rateA = progenitorA.genotype.individualCrossoverRate
-                    let rateB = progenitorB.genotype.individualCrossoverRate
-                    let crossoverRate = rateA ?? rateB ?? taskEnvironment.crossoverRate
-                    var (progenyGenomeA, progenyGenomeB) = try progenitorA.genotype.crossover(with: progenitorB.genotype, rate: crossoverRate, environment: taskEnvironment)
-                    
-                    try Task.checkCancellation()
-                    // Perform mutation.
-                    let mutationRateA = progenyGenomeA.individualMutationRate ?? taskEnvironment.mutationRate
-                    try progenyGenomeA.mutate(rate: mutationRateA, environment: taskEnvironment)
-                    let mutationRateB = progenyGenomeB.individualMutationRate ?? taskEnvironment.mutationRate
-                    try progenyGenomeB.mutate(rate: mutationRateB, environment: taskEnvironment)
-                    
-                    // Return the mating index and the pair of children.
-                    return (index, [
-                        Organism<G>(fitness: nil, genotype: progenyGenomeA, birthGeneration: currentGeneration),
-                        Organism<G>(fitness: nil, genotype: progenyGenomeB, birthGeneration: currentGeneration)
-                    ])
-                }
-            }
-            
-            var results = [(Int, [Organism<G>])]()
-            results.reserveCapacity(matings.count)
-            while let result = try await group.next() {
-                results.append(result)
-            }
-            
-            // Sort by mating index to ensure determinism.
-            results.sort { $0.0 < $1.0 }
-            
-            return results.flatMap { $0.1 }
-        }
+		let matingCount = parents.count / 2
+		let currentGeneration = generation
+		let currentEnvironment = environment
+		
+		let progeny: [Organism<G>]
+		let sequentialThreshold = 64
+		if matingCount < sequentialThreshold {
+			var localProgeny = [Organism<G>]()
+			localProgeny.reserveCapacity(matingCount * 2)
+			for i in 0..<matingCount {
+				try Task.checkCancellation()
+				let progenitorA = parents[i * 2]
+				let progenitorB = parents[i * 2 + 1]
+				let crossoverRate = progenitorA.genotype.individualCrossoverRate
+					?? progenitorB.genotype.individualCrossoverRate
+					?? currentEnvironment.crossoverRate
+				var (progenyGenomeA, progenyGenomeB) = try progenitorA.genotype.crossover(with: progenitorB.genotype, rate: crossoverRate, environment: currentEnvironment)
+				try Task.checkCancellation()
+				try progenyGenomeA.mutate(rate: progenyGenomeA.individualMutationRate ?? currentEnvironment.mutationRate, environment: currentEnvironment)
+				try progenyGenomeB.mutate(rate: progenyGenomeB.individualMutationRate ?? currentEnvironment.mutationRate, environment: currentEnvironment)
+				localProgeny.append(Organism<G>(fitness: nil, genotype: progenyGenomeA, birthGeneration: currentGeneration))
+				localProgeny.append(Organism<G>(fitness: nil, genotype: progenyGenomeB, birthGeneration: currentGeneration))
+			}
+			progeny = localProgeny
+		} else {
+			let processorCount = max(1, ProcessInfo.processInfo.activeProcessorCount)
+			let chunkSize = max(1, (matingCount + processorCount - 1) / processorCount)
+			let chunkRanges = Array(stride(from: 0, to: matingCount, by: chunkSize)).map { start in
+				start..<min(start + chunkSize, matingCount)
+			}
+			// Pre-fork one RNG per chunk sequentially so child seeds are deterministic
+			// and independent of task scheduling order.
+			let forkedSources = (0..<chunkRanges.count).map { currentEnvironment.randomSource.fork(index: $0) }
+			let immutableParents = parents
+			
+			progeny = try await withThrowingTaskGroup(of: (Int, [Organism<G>]).self) { group in
+				for (chunkIndex, range) in chunkRanges.enumerated() {
+					let chunkRandomSource = forkedSources[chunkIndex]
+					group.addTask {
+						var taskEnvironment = currentEnvironment
+						taskEnvironment.randomSource = chunkRandomSource
+						var chunkProgeny = [Organism<G>]()
+						chunkProgeny.reserveCapacity(range.count * 2)
+						
+						for i in range {
+							try Task.checkCancellation()
+							let progenitorA = immutableParents[i * 2]
+							let progenitorB = immutableParents[i * 2 + 1]
+							let crossoverRate = progenitorA.genotype.individualCrossoverRate
+								?? progenitorB.genotype.individualCrossoverRate
+								?? taskEnvironment.crossoverRate
+							var (progenyGenomeA, progenyGenomeB) = try progenitorA.genotype.crossover(with: progenitorB.genotype, rate: crossoverRate, environment: taskEnvironment)
+							try Task.checkCancellation()
+							try progenyGenomeA.mutate(rate: progenyGenomeA.individualMutationRate ?? taskEnvironment.mutationRate, environment: taskEnvironment)
+							try progenyGenomeB.mutate(rate: progenyGenomeB.individualMutationRate ?? taskEnvironment.mutationRate, environment: taskEnvironment)
+							chunkProgeny.append(Organism<G>(fitness: nil, genotype: progenyGenomeA, birthGeneration: currentGeneration))
+							chunkProgeny.append(Organism<G>(fitness: nil, genotype: progenyGenomeB, birthGeneration: currentGeneration))
+						}
+						return (chunkIndex, chunkProgeny)
+					}
+				}
+				
+				var orderedChunks = [[Organism<G>]](repeating: [], count: chunkRanges.count)
+				for try await (chunkIndex, chunkProgeny) in group {
+					orderedChunks[chunkIndex] = chunkProgeny
+				}
+				
+				var combined = [Organism<G>]()
+				combined.reserveCapacity(matingCount * 2)
+				for chunk in orderedChunks {
+					combined.append(contentsOf: chunk)
+				}
+				return combined
+			}
+		}
         
         newOrganisms.append(contentsOf: progeny)
 		

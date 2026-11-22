@@ -26,12 +26,36 @@ public struct DiscreteChoiceGene<C: DiscreteChoice, E: GeneticEnvironment>: Gene
 	}
 	
 	mutating public func mutate(rate: Double, environment: DiscreteChoiceGene<C, E>.Environment) throws {
-		guard environment.randomSource.randomDouble() < rate else { return }
-		
-		// Select a new choice randomly.
-		let otherChoices = C.allCases.filter { $0 != choice }
-		guard let newChoice = environment.randomSource.randomElement(from: otherChoices) else { return }
-		choice = newChoice
+		environment.randomSource.withGenerator { rng in
+			guard Double.random(in: 0..<1, using: &rng) < rate else { return }
+			mutateChoice(using: &rng)
+		}
+	}
+	
+	public static func mutateGenes(_ genes: inout [Self], rate: Double, environment: DiscreteChoiceGene<C, E>.Environment) throws {
+		guard !genes.isEmpty else { return }
+		environment.randomSource.withGenerator { rng in
+			for i in 0..<genes.count {
+				if Double.random(in: 0..<1, using: &rng) < rate {
+					genes[i].mutateChoice(using: &rng)
+				}
+			}
+		}
+	}
+	
+	private mutating func mutateChoice(using rng: inout Xoshiro256PlusPlus) {
+		// Select a new choice randomly without allocating a filtered array.
+		let allCases = C.allCases
+		let otherCount = allCases.count - 1
+		guard otherCount > 0 else { return }
+		var target = Int.random(in: 0..<otherCount, using: &rng)
+		for candidate in allCases where candidate != choice {
+			if target == 0 {
+				choice = candidate
+				return
+			}
+			target -= 1
+		}
 	}
 	
 	// MARK: - Coding.

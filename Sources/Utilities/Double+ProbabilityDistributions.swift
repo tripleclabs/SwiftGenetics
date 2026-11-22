@@ -29,7 +29,7 @@ extension Double {
 		var q = 0.0
 		var z = 0.0
 		
-		u = Double.random(in: 0..<1)
+		u = Double.random(in: Double.leastNonzeroMagnitude..<1.0)
 		if u < 0.5 {
 			t = sqrt(-2.0 * log(u))
 		} else {
