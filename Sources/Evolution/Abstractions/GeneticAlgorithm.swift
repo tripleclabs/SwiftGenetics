@@ -121,19 +121,22 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
                     if evolutionType == .nsga2 {
                         // Single batched lock acquisition to check cache for the entire chunk.
                         let cachedList = cache.objectivesList(for: pendingGenomes)
+                        var localCache = [Eval.G: [Double]]()
                         var newCacheEntries = [(Eval.G, [Double])]()
                         
                         for i in 0..<pendingOrganisms.count {
                             try Task.checkCancellation()
                             let originalIndex = pendingIndices[i]
-                            if let cached = cachedList[i] {
+                            let genome = pendingGenomes[i]
+                            if let cached = cachedList[i] ?? localCache[genome] {
                                 chunkResults.append((originalIndex, cached.first, cached))
                                 continue
                             }
                             do {
                                 let objectives = try await evaluator.objectivesFor(organism: pendingOrganisms[i])
                                 try Task.checkCancellation()
-                                newCacheEntries.append((pendingGenomes[i], objectives))
+                                localCache[genome] = objectives
+                                newCacheEntries.append((genome, objectives))
                                 chunkResults.append((originalIndex, objectives.first, objectives))
                             } catch is CancellationError {
                                 throw CancellationError()
@@ -150,19 +153,22 @@ public struct GeneticAlgorithm<Eval: FitnessEvaluator, LogDelegate: EvolutionLog
                     } else {
                         // Single batched lock acquisition to check cache for the entire chunk.
                         let cachedList = cache.fitnesses(for: pendingGenomes)
+                        var localCache = [Eval.G: Double]()
                         var newCacheEntries = [(Eval.G, Double)]()
                         
                         for i in 0..<pendingOrganisms.count {
                             try Task.checkCancellation()
                             let originalIndex = pendingIndices[i]
-                            if let cached = cachedList[i] {
+                            let genome = pendingGenomes[i]
+                            if let cached = cachedList[i] ?? localCache[genome] {
                                 chunkResults.append((originalIndex, cached, nil))
                                 continue
                             }
                             do {
                                 let fit = try await evaluator.fitnessFor(organism: pendingOrganisms[i])
                                 try Task.checkCancellation()
-                                newCacheEntries.append((pendingGenomes[i], fit))
+                                localCache[genome] = fit
+                                newCacheEntries.append((genome, fit))
                                 chunkResults.append((originalIndex, fit, nil))
                             } catch is CancellationError {
                                 throw CancellationError()

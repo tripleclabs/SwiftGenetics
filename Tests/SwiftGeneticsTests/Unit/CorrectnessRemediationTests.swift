@@ -241,4 +241,39 @@ final class CorrectnessRemediationTests: XCTestCase {
             }
         }
     }
+
+    // MARK: - Intra-Chunk Cache Deduplication
+
+    private actor CountingEvaluator: FitnessEvaluator {
+        typealias G = PermutationGenome<Int>
+        var calls = 0
+        func fitnessFor(organism: Organism<G>) async throws -> Double {
+            calls += 1
+            return Double(calls)
+        }
+        func objectivesFor(organism: Organism<G>) async throws -> [Double] {
+            calls += 1
+            return [Double(calls), Double(calls)]
+        }
+    }
+
+    private struct NoopLogger: EvolutionLoggingDelegate {
+        typealias G = PermutationGenome<Int>
+        func evolutionStartingEpoch(_ i: Int) {}
+        func evolutionFinishedEpoch(_ i: Int, duration: TimeInterval, population: Population<G>) {}
+        func evolutionFoundSolution(_ solution: G, fitness: Double) {}
+    }
+
+    func testEvaluatePopulationDeduplicatesWithinChunk() async throws {
+        let env = PermutationEnvironment(populationSize: 4, selectionMethod: .nsga2, numberOfElites: 0, numberOfEliteCopies: 0)
+        var pop = Population<PermutationGenome<Int>>(environment: env, evolutionType: .nsga2)
+        pop.organisms = (0..<4).map { _ in Organism(genotype: PermutationGenome(elements: [0, 1])) }
+
+        let eval = CountingEvaluator()
+        let ga = GeneticAlgorithm(fitnessEvaluator: eval, loggingDelegate: NoopLogger())
+        try await ga.evolve(population: &pop, configuration: .init(maxEpochs: 0, algorithmType: .nsga2, parallelEvaluationThreads: 1))
+
+        let totalCalls = await eval.calls
+        XCTAssertEqual(totalCalls, 1, "Identical genomes within the same evaluation chunk should only be evaluated once.")
+    }
 }
